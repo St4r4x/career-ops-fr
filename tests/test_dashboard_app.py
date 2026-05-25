@@ -228,6 +228,16 @@ class TestOfferStatus:
         updated = db.get_by_id(row["id"])
         assert updated["status"] == "Envoyée"
 
+    def test_invalid_status_rejected(self, client_with_data):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        row = db.get_all({})[0]
+        r = client_with_data.post(
+            f"/offers/{row['id']}/status", data={"status": "InvalidStatus"}
+        )
+        assert r.status_code == 422
+
 
 class TestStats:
     def test_stats_returns_200(self, client_with_data):

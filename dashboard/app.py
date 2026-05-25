@@ -180,6 +180,8 @@ async def offer_delete(request: Request, offer_id: int):
 
 @app.post("/offers/{offer_id}/status", response_class=HTMLResponse)
 async def offer_status(request: Request, offer_id: int, status: str = Form(...)):
+    if status not in VALID_STATUSES:
+        raise HTTPException(status_code=422, detail=f"Invalid status: {status}")
     db = request.app.state.db
     offer = db.update_status(offer_id, status)
     return templates.TemplateResponse(

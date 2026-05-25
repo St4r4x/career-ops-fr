@@ -7,14 +7,14 @@ search_params:
   keywords: ""
   location: "Paris"
 selectors:
-  offer_card: "div.result-item"
-  title: "h2.result-item-title a"
-  company: "span.result-item-company"
-  url: "h2.result-item-title a"
-  location: "span.result-item-location"
-  date: "span.result-item-date"
+  offer_card: "a[href*='detail-offre']"
+  title: "h2.card-title"
+  company: "p.card-offer__company"
+  url: "a[href*='detail-offre']"
+  location: "li:has(img[alt='localisation'])"
+  date: "li[title='Date de publication']"
 pagination:
-  type: next_button
+  type: page_param
   max_pages: 5
-  next_selector: "a.pagination-next"
-  page_param: ""
+  next_selector: ""
+  page_param: "page"

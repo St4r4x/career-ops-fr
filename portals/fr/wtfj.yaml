@@ -1,5 +1,5 @@
 portal_id: wtfj
-status: active
+status: needs_auth
 name: "Welcome to the Jungle"
 base_url: "https://www.welcometothejungle.com"
 search_url_template: "https://www.welcometothejungle.com/fr/jobs?query={keywords}&aroundQuery={location}"
@@ -8,9 +8,9 @@ search_params:
   location: "Paris"
 selectors:
   offer_card: "li[data-testid='search-results-list-item-wrapper']"
-  title: "h3[data-testid='job-title']"
+  title: "h2 a[role='link']"
   company: "span[data-testid='company-title']"
-  url: "a[data-testid='job-link']"
+  url: "a[role='link']"
   location: "span[data-testid='job-location']"
   date: "time"
 pagination:

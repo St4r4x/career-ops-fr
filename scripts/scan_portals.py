@@ -132,7 +132,12 @@ async def _card_href(card, sel: str) -> str:
         return ""
     try:
         el = await card.query_selector(sel)
-        return (await el.get_attribute("href") or "").strip() if el else ""
+        if el is None:
+            # card itself may be the <a> element (e.g. offer_card == url selector);
+            # query_selector only searches descendants, so fall back to card's own href.
+            href = await card.get_attribute("href")
+            return (href or "").strip()
+        return (await el.get_attribute("href") or "").strip()
     except Exception:
         return ""
 
@@ -195,7 +200,7 @@ async def scrape_portal(
     offers: list[RawOffer] = []
 
     async with async_playwright() as pw:
-        browser = await pw.firefox.launch(headless=True)
+        browser = await pw.chromium.launch(headless=True, channel="chrome")
         try:
             context = await browser.new_context(
                 user_agent=(

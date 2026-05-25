@@ -17,6 +17,7 @@ from pathlib import Path
 from scripts.dedup import deduplicate
 from scripts.models import RawOffer
 from scripts.pre_filter import load_settings, pre_filter
+from scripts.scan_ats import scan_ats
 from scripts.scan_portals import list_portal_ids, run_scan
 
 logger = logging.getLogger(__name__)

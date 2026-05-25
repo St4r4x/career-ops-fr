@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "dashboard"))
-from db import DB
+from db import DB, VALID_STATUSES
 
 CREATE_SQL = """
 CREATE TABLE IF NOT EXISTS applications (
@@ -180,3 +180,11 @@ class TestGetStats:
         _insert(db, status="Entretien tech")
         stats = db.get_stats()
         assert stats["interview_count"] == 1
+
+
+class TestValidStatuses:
+    def test_is_list_with_correct_values(self):
+        assert isinstance(VALID_STATUSES, list)
+        assert "À envoyer" in VALID_STATUSES
+        assert "Acceptée" in VALID_STATUSES
+        assert len(VALID_STATUSES) == 9

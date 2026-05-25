@@ -57,10 +57,10 @@ class DB:
         return [_row_to_dict(r) for r in rows]
 
     def get_by_id(self, id: int) -> dict | None:
-        row = self.conn.execute(_SELECT + "WHERE id = ?", (id,)).fetchone()
+        row = self.conn.execute(f"{_SELECT} WHERE id = ?", (id,)).fetchone()
         return _row_to_dict(row) if row else None
 
-    def update(self, id: int, fields: dict) -> dict | None:
+    def update(self, id: int, fields: dict) -> dict:
         allowed = {
             "company",
             "role",
@@ -91,7 +91,7 @@ class DB:
         self.conn.execute("DELETE FROM applications WHERE id = ?", (id,))
         self.conn.commit()
 
-    def update_status(self, id: int, status: str) -> dict | None:
+    def update_status(self, id: int, status: str) -> dict:
         return self.update(id, {"status": status})
 
     def get_stats(self) -> dict:
@@ -101,7 +101,7 @@ class DB:
         today = date.today()
         for r in rows:
             s = r["status"]
-            by_status[s] = by_status.get(s, 0) + 1
+            by_status[s] += 1
             if s != "À envoyer":
                 sent += 1
             if s in _RESPONSE_STATUSES:
@@ -127,5 +127,4 @@ class DB:
 
 def open_db(path: Path) -> DB:
     conn = sqlite3.connect(str(path))
-    conn.row_factory = sqlite3.Row
     return DB(conn)

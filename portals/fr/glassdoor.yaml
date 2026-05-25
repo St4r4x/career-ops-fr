@@ -1,4 +1,5 @@
 portal_id: glassdoor
+status: needs_auth
 name: "Glassdoor France"
 base_url: "https://www.glassdoor.fr"
 search_url_template: "https://www.glassdoor.fr/Emploi/emplois.htm?sc.keyword={keywords}&locT=C&locName={location}"

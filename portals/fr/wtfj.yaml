@@ -1,4 +1,5 @@
 portal_id: wtfj
+status: active
 name: "Welcome to the Jungle"
 base_url: "https://www.welcometothejungle.com"
 search_url_template: "https://www.welcometothejungle.com/fr/jobs?query={keywords}&aroundQuery={location}"

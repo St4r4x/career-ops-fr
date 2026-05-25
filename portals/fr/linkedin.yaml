@@ -1,4 +1,5 @@
 portal_id: linkedin
+status: needs_auth
 name: "LinkedIn France"
 base_url: "https://www.linkedin.com"
 search_url_template: "https://www.linkedin.com/jobs/search/?keywords={keywords}&location={location}&f_WT=2"

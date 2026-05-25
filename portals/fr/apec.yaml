@@ -1,4 +1,5 @@
 portal_id: apec
+status: active
 name: "APEC"
 base_url: "https://www.apec.fr"
 search_url_template: "https://www.apec.fr/candidat/recherche-emploi.html/emploi?motsCles={keywords}&lieuTravail={location}"

@@ -191,7 +191,7 @@ class TestFetchDescriptionUnit:
 
         mock_page = AsyncMock()
         mock_page.goto = AsyncMock()
-        mock_page.query_selector = AsyncMock(return_value=mock_el)
+        mock_page.wait_for_selector = AsyncMock(return_value=mock_el)
 
         mock_context = MagicMock()
         mock_context.new_page = AsyncMock(return_value=mock_page)
@@ -203,6 +203,7 @@ class TestFetchDescriptionUnit:
         mock_page.goto.assert_awaited_once_with(
             "https://example.com/offer/1", wait_until="domcontentloaded", timeout=20_000
         )
+        mock_page.wait_for_selector.assert_awaited_once_with("div.desc", timeout=10_000)
         mock_page.close.assert_awaited_once()
 
     def test_returns_empty_string_when_selector_not_found(self) -> None:
@@ -213,7 +214,7 @@ class TestFetchDescriptionUnit:
 
         mock_page = AsyncMock()
         mock_page.goto = AsyncMock()
-        mock_page.query_selector = AsyncMock(return_value=None)
+        mock_page.wait_for_selector = AsyncMock(return_value=None)
 
         mock_context = MagicMock()
         mock_context.new_page = AsyncMock(return_value=mock_page)

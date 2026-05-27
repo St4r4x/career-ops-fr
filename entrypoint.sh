@@ -9,7 +9,8 @@ if [ "$MODE" = "dashboard" ]; then
 elif [ "$MODE" = "pipeline" ]; then
     shift
     cd /app
-    exec python -m scripts.daily_report "$@"
+    python -m scripts.daily_report "$@"
+    exec python -m scripts.import_offers "$@"
 else
     echo "Unknown mode: $MODE. Use 'dashboard' or 'pipeline'."
     exit 1

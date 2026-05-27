@@ -59,9 +59,23 @@ From the description, extract:
 
 ### Phase 4 — Generate cover letter
 
+**MANDATORY grounding step before writing — do not skip.**
+
+Build this table for every claim you plan to make:
+
+| Claim envisaged | Exact source in profile.md | Section |
+|-----------------|----------------------------|---------|
+| e.g. "j'ai déployé des pipelines RAG" | ? | |
+
+Rules:
+- A claim is allowed ONLY if its source is in the **Experience** section of `config/profile.md` (a job or internship with explicit dates).
+- Skills listed in the **Skills** section but annotated `[personal study]`, `[self-training]`, or `[not yet deployed in production]` are FORBIDDEN in the cover letter — they may appear in the CV skills list but never as claimed professional accomplishments.
+- Skills listed in the **Personal Projects** section may only be mentioned as personal projects, never as professional experience.
+- If fewer than 2 verifiable claims exist for the top requirements, say so explicitly rather than inventing.
+
 1. Write 3 paragraphs (< 300 words total, in the language of the job posting):
    - Para 1 (hook): one concrete reason tied to `hook_angle` — never "Je suis passionné par l'IA"
-   - Para 2 (proof): 2 specific experiences from `config/profile.md` addressing the top 2 requirements
+   - Para 2 (proof): 2 specific experiences from the **Experience** section of `config/profile.md` — each backed by a row in the grounding table above
    - Para 3 (close): confident close, mention availability (fin 2026 / dès que possible)
 2. Never use: "Je suis très motivé", "passionné par", "je me permets de", "dans l'espoir de"
 3. Build `/tmp/cl-context-<slug>.json`:

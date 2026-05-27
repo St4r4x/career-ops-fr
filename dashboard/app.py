@@ -325,7 +325,7 @@ async def profile_save_education(request: Request, data: str = Form("")):
         parsed = json.loads(data)
         profile_data["education"] = parsed.get("education", [])
         profile_data["certifications"] = parsed.get("certifications", [])
-    except (json.JSONDecodeError, ValueError):
+    except (json.JSONDecodeError, ValueError, AttributeError):
         return templates.TemplateResponse(
             request,
             "partials/profile_education.html",

@@ -279,6 +279,11 @@ class TestSaveEducation:
         assert "PhD AI" in text
         assert "GCP ML Engineer" in text
 
+    def test_save_education_invalid_json_returns_error(self, profile_client):
+        r = profile_client.post("/profile/education", data={"data": "not-json"})
+        assert r.status_code == 200
+        assert "invalide" in r.text
+
 
 class TestSaveProjects:
     def test_save_projects_returns_200(self, profile_client):
@@ -305,3 +310,8 @@ class TestSaveProjects:
         text = profile_file.read_text(encoding="utf-8")
         assert "awesome-tool" in text
         assert "Does great things" in text
+
+    def test_save_projects_invalid_json_returns_error(self, profile_client):
+        r = profile_client.post("/profile/projects", data={"data": "not-json"})
+        assert r.status_code == 200
+        assert "invalide" in r.text

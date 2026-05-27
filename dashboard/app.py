@@ -280,7 +280,11 @@ async def profile_save_experience(
     try:
         profile_data["experience"] = json.loads(data)
     except (json.JSONDecodeError, ValueError):
-        profile_data["experience"] = []
+        return templates.TemplateResponse(
+            request,
+            "partials/profile_experience.html",
+            {"profile": profile_data, "saved": False, "error": "Format JSON invalide"},
+        )
     profile_parser.save_profile(profile_data)
     return templates.TemplateResponse(
         request,

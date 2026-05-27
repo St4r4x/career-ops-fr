@@ -191,3 +191,23 @@ class TestSaveExperience:
 
         r = profile_client.post("/profile/experience", data={"data": json.dumps([])})
         assert "Sauvegardé" in r.text
+
+    def test_save_experience_persists(self, profile_client, profile_files):
+        import json
+
+        _, profile_file = profile_files
+        payload = json.dumps(
+            [
+                {
+                    "title": "SWE",
+                    "company": "Acme",
+                    "type": "CDI",
+                    "period": "2024 – Present",
+                    "bullets": ["Built things"],
+                }
+            ]
+        )
+        profile_client.post("/profile/experience", data={"data": payload})
+        text = profile_file.read_text(encoding="utf-8")
+        assert "SWE" in text
+        assert "Acme" in text

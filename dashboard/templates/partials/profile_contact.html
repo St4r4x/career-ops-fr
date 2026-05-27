@@ -1,1 +1,15 @@
-<p class="text-slate-500 text-sm">Contact — à implémenter</p>
+{% if saved %}<p class="pf-flash mb-2">✓ Sauvegardé</p>{% endif %}
+<form hx-post="/profile/contact" hx-target="#section-contact" hx-swap="innerHTML">
+  <div class="grid grid-cols-2 gap-2 mb-3">
+    {% for field, label in [("name","Nom"),("title","Titre"),("email","Email"),
+        ("phone","Téléphone"),("location","Localisation"),("linkedin","LinkedIn"),("github","GitHub")] %}
+    <div>
+      <label class="pf-label">{{ label }}</label>
+      <input class="pf-input" name="{{ field }}" value="{{ profile.contact.get(field, '') }}">
+    </div>
+    {% endfor %}
+  </div>
+  <div class="flex justify-end">
+    <button type="submit" class="pf-save-btn">Sauvegarder</button>
+  </div>
+</form>

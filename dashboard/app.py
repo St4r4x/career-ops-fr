@@ -219,3 +219,51 @@ async def profile_page(request: Request):
         "profile.html",
         {"profile": profile, "profile_exists": profile_exists},
     )
+
+
+@app.post("/profile/contact", response_class=HTMLResponse)
+async def profile_save_contact(
+    request: Request,
+    name: str = Form(""),
+    title: str = Form(""),
+    email: str = Form(""),
+    phone: str = Form(""),
+    location: str = Form(""),
+    linkedin: str = Form(""),
+    github: str = Form(""),
+) -> HTMLResponse:
+    import profile_parser
+
+    data = profile_parser.load_profile()
+    data["contact"] = {
+        "name": name,
+        "title": title,
+        "email": email,
+        "phone": phone,
+        "location": location,
+        "linkedin": linkedin,
+        "github": github,
+    }
+    profile_parser.save_profile(data)
+    return templates.TemplateResponse(
+        request,
+        "partials/profile_contact.html",
+        {"profile": data, "saved": True},
+    )
+
+
+@app.post("/profile/summary", response_class=HTMLResponse)
+async def profile_save_summary(
+    request: Request,
+    summary: str = Form(""),
+) -> HTMLResponse:
+    import profile_parser
+
+    data = profile_parser.load_profile()
+    data["summary"] = summary
+    profile_parser.save_profile(data)
+    return templates.TemplateResponse(
+        request,
+        "partials/profile_summary.html",
+        {"profile": data, "saved": True},
+    )

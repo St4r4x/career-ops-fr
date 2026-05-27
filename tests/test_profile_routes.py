@@ -95,3 +95,121 @@ class TestProfilePage:
         r = profile_client.get("/profile")
         assert "/profile" in r.text
         assert "Profil" in r.text
+
+
+class TestSaveContact:
+    def test_save_contact_returns_200(self, profile_client):
+        r = profile_client.post(
+            "/profile/contact",
+            data={
+                "name": "New Name",
+                "title": "ML Eng",
+                "email": "new@test.com",
+                "phone": "+33 6 11 11 11 11",
+                "location": "Lyon",
+                "linkedin": "",
+                "github": "github.com/new",
+            },
+        )
+        assert r.status_code == 200
+
+    def test_save_contact_persists_to_yaml(self, profile_client, tmp_path, monkeypatch):
+        import profile_parser as parser_mod
+
+        contact_file = tmp_path / "contact.yaml"
+        profile_file = tmp_path / "profile.md"
+        contact_file.write_text(
+            """\
+name: Test User
+title: AI Engineer
+email: test@example.com
+phone: "+33 6 00 00 00 00"
+location: Paris
+linkedin: ""
+github: github.com/testuser
+""",
+            encoding="utf-8",
+        )
+        profile_file.write_text(
+            """\
+# Profile — Test User
+
+## Contact
+- Email: test@example.com
+- Phone: +33 6 00 00 00 00
+- Location: Paris
+- LinkedIn:
+- GitHub: github.com/testuser
+
+## Summary
+An experienced engineer.
+
+## Experience
+
+### ML Engineer — Acme Corp (CDI, January 2024 – Present)
+- Built a pipeline
+
+## Education
+- **MSc AI** — Great School (2022–2024)
+
+## Certifications & Training
+- AWS ML
+
+## Skills
+
+### Machine Learning
+- PyTorch
+
+## Personal Projects
+
+- **cool-project**: A cool project
+""",
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(parser_mod, "_CONTACT_YAML", contact_file)
+        monkeypatch.setattr(parser_mod, "_PROFILE_MD", profile_file)
+        profile_client.post(
+            "/profile/contact",
+            data={
+                "name": "Updated",
+                "title": "Eng",
+                "email": "u@test.com",
+                "phone": "",
+                "location": "",
+                "linkedin": "",
+                "github": "",
+            },
+        )
+        import yaml
+
+        saved = yaml.safe_load(contact_file.read_text())
+        assert saved["name"] == "Updated"
+
+    def test_save_contact_response_contains_saved_flash(self, profile_client):
+        r = profile_client.post(
+            "/profile/contact",
+            data={
+                "name": "N",
+                "title": "T",
+                "email": "e@e.com",
+                "phone": "",
+                "location": "",
+                "linkedin": "",
+                "github": "",
+            },
+        )
+        assert "Sauvegardé" in r.text
+
+
+class TestSaveSummary:
+    def test_save_summary_returns_200(self, profile_client):
+        r = profile_client.post(
+            "/profile/summary", data={"summary": "New summary text."}
+        )
+        assert r.status_code == 200
+
+    def test_save_summary_response_contains_flash(self, profile_client):
+        r = profile_client.post(
+            "/profile/summary", data={"summary": "New summary text."}
+        )
+        assert "Sauvegardé" in r.text

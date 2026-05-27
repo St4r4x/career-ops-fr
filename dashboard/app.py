@@ -206,3 +206,16 @@ async def stats_page(request: Request):
             "statuses": VALID_STATUSES,
         },
     )
+
+
+@app.get("/profile", response_class=HTMLResponse)
+async def profile_page(request: Request):
+    import profile_parser
+
+    profile = profile_parser.load_profile()
+    profile_exists = (Path(__file__).parent.parent / "config" / "profile.md").exists()
+    return templates.TemplateResponse(
+        request,
+        "profile.html",
+        {"profile": profile, "profile_exists": profile_exists},
+    )

@@ -39,9 +39,8 @@ def _split_sections(text: str) -> dict[str, str]:
                 sections[current] = "\n".join(lines).strip()
             current = line[3:].strip()
             lines = []
-        elif not line.startswith("# "):
-            if current is not None:
-                lines.append(line)
+        elif current is not None:
+            lines.append(line)
     if current is not None:
         sections[current] = "\n".join(lines).strip()
     return sections
@@ -152,6 +151,7 @@ def _serialize_profile_md(data: dict[str, Any]) -> str:
     lines: list[str] = [
         f"# Profile — {c.get('name', '')}",
         "",
+        # Contact block is informational only; authoritative source is contact.yaml
         "## Contact",
         f"- Email: {c.get('email', '')}",
         f"- Phone: {c.get('phone', '')}",

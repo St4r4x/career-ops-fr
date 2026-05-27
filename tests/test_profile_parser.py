@@ -121,7 +121,7 @@ def test_roundtrip(tmp_config):
     reloaded = parser_mod.load_profile()
     assert reloaded["contact"] == original["contact"]
     assert reloaded["summary"] == original["summary"]
-    assert len(reloaded["experience"]) == len(original["experience"])
+    assert reloaded["experience"] == original["experience"]
     assert reloaded["skills"] == original["skills"]
     assert reloaded["education"] == original["education"]
     assert reloaded["certifications"] == original["certifications"]

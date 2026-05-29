@@ -22,3 +22,5 @@ config/profile.md
 config/contact.yaml
 # claude code local settings
 .claude/
+# playwright mcp logs
+.playwright-mcp/

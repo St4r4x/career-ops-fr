@@ -10,35 +10,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## 2026-05-29
 
 ### Added
-- `scripts/liveness.py` — `check_liveness(url)` HTTP-first job URL liveness checker; returns `(status, reason)` with statuses `active | expired | uncertain`; detects expiry via HTTP 404/410, URL path patterns, and a list of French/English body patterns; zero browser, zero LLM
-- `tests/test_liveness.py` — 7 tests covering 404, 410, French body pattern, English body pattern, clean 200 active, network error uncertain, and empty URL uncertain
-
-### Added
-- `scripts/generate_pdf.py` — `_normalize_for_ats()` function: replaces typographic characters that break ATS parsers (em-dashes, en-dashes, smart quotes, non-breaking spaces, zero-width spaces) while preserving style/script blocks; applies before WeasyPrint rendering in all PDF generators
-- `tests/test_generate_pdf.py` — `TestNormalizeForAts` class with 6 tests covering em-dash, en-dash, smart quotes, zero-width characters, style block preservation, and plain text passthrough
-
-### Changed
-- `scripts/generate_pdf.py` — `generate_pdf()` now calls `_normalize_for_ats()` on HTML before rendering to PDF
-- `scripts/generate_cover_letter.py` — `generate_pdf()` now calls `_normalize_for_ats()` on HTML before rendering to PDF; added import of `_normalize_for_ats` from `scripts.generate_pdf`
-- `scripts/generate_prep_sheet.py` — `generate_pdf()` now calls `_normalize_for_ats()` on HTML before rendering to PDF; added import of `_normalize_for_ats` from `scripts.generate_pdf`
-
-## 2026-05-29 (Earlier)
-
-### Added
-- `scripts/pre_filter.py` — `_score_legitimacy()` function: penalises low-quality offers with -0.5 for thin description (<300 chars), -0.3 for no tech skills, -0.2 for no salary info; penalty capped at -0.5; adds `legitimacy:thin_desc`, `legitimacy:no_tech`, `legitimacy:no_salary`, and `legitimacy:suspicious` tags
-- `scripts/pre_filter.py` — wired `_score_legitimacy()` call into `score_offer()` before the final return
-- `tests/test_pre_filter.py` — `TestLegitimacy` class with 4 tests covering thin desc, no tech, no salary (no suspicious tag), and clean offer; `_CLEAN_DESC` constant for legitimacy-neutral descriptions
+- `scripts/liveness.py` — `check_liveness(url)` HTTP-first job URL liveness checker; returns `(status, reason)` with statuses `active | expired | uncertain`; detects expiry via HTTP 404/410, URL path patterns, and French/English body patterns; zero browser, zero LLM
+- `tests/test_liveness.py` — 7 tests covering 404, 410, FR/EN body patterns, clean 200, network error, empty URL
+- `scripts/generate_pdf.py` — `_normalize_for_ats()`: replaces typographic characters that break ATS parsers (em-dashes, smart quotes, zero-width spaces) while preserving `<style>`/`<script>` blocks
+- `tests/test_generate_pdf.py` — `TestNormalizeForAts` (6 tests)
+- `scripts/pre_filter.py` — `_score_legitimacy()`: penalties for thin desc (<300 chars, -0.5), no tech skills (-0.3), no salary (-0.2); capped at -0.5; `legitimacy:suspicious` tag if penalty ≥ 0.3
+- `tests/test_pre_filter.py` — `TestLegitimacy` (4 tests), `TestSalaryNormalized` (5 tests)
 
 ### Changed
-- `tests/test_pre_filter.py` — updated `TestNewSignals` tests to use `_CLEAN_DESC` or relative assertions instead of exact scores, since legitimacy penalties now apply to short/sparse descriptions
-- `tests/test_pre_filter.py` — updated `TestSalaryNormalized` tests to use `_SALARY_BASE` padded descriptions and comparative assertions to decouple from legitimacy side-effects
-
-
-
-### Changed
-- `scripts/pre_filter.py` — replaced flat salary signal (+0.3 if raw value in range) with package-aware `_score_salary()`: reconstructs French annual package from base salary, 13th month, RTT days, titre-restaurant, and intéressement; returns +0.5 if total in target range, -0.3 if out of range, 0.0 if no salary found
-- `scripts/pre_filter.py` — added 4 new regex constants: `_MONTHS_13_RE`, `_RTT_RE`, `_TR_RE`, `_INTERESSEMENT_RE`
-- `tests/test_pre_filter.py` — updated `test_salary_in_range` and `test_salary_out_of_range` in `TestNewSignals` to match new +0.5/-0.3 values; added `TestSalaryNormalized` class with 5 tests for package-aware salary logic
+- `scripts/pre_filter.py` — replaced flat salary signal (+0.3) with `_score_salary()`: reconstructs French annual package (13e mois, RTT, titre-restaurant, intéressement); +0.5 if in range, -0.3 if out of range, 0.0 if absent; added `_MONTHS_13_RE`, `_RTT_RE`, `_TR_RE`, `_INTERESSEMENT_RE`
+- `scripts/generate_cover_letter.py` — `_normalize_for_ats()` applied before WeasyPrint render
+- `scripts/generate_prep_sheet.py` — `_normalize_for_ats()` applied before WeasyPrint render
+- `scripts/import_offers.py` — added `import_offers_with_liveness()` returning `(inserted, skipped, expired)` and `--check-liveness` CLI flag
+- `tests/test_import_offers.py` — `TestLivenessIntegration` (2 tests)
+- `dashboard/data/applications.db` — rescored with updated salary + legitimacy signals
 
 ## 2026-05-28
 

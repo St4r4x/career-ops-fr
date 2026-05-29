@@ -241,3 +241,103 @@ class TestLivenessIntegration:
         )
         assert inserted == 1
         assert expired == 0
+
+
+class TestExpireStaleOffers:
+    def test_expired_offer_marked_abandoned(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: pytest.TempPath
+    ) -> None:
+        import scripts.import_offers as io
+
+        monkeypatch.setattr(
+            "scripts.import_offers.check_liveness",
+            lambda url, **kw: ("expired", "http_404"),
+        )
+        db_path = tmp_path / "test.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.execute(io._CREATE_TABLE_SQL)
+        conn.execute(
+            "INSERT INTO applications (company, role, offer_url, detection_date, status) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (
+                "Acme",
+                "ML Engineer",
+                "https://jobs.example.com/1",
+                "2026-01-01",
+                "À envoyer",
+            ),
+        )
+        conn.commit()
+        conn.close()
+
+        abandoned = io.expire_stale_offers(db_path)
+        assert abandoned == 1
+
+        conn2 = sqlite3.connect(str(db_path))
+        row = conn2.execute("SELECT status FROM applications").fetchone()
+        conn2.close()
+        assert row[0] == "Abandonnée"
+
+    def test_active_offer_unchanged(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: pytest.TempPath
+    ) -> None:
+        import scripts.import_offers as io
+
+        monkeypatch.setattr(
+            "scripts.import_offers.check_liveness",
+            lambda url, **kw: ("active", "ok"),
+        )
+        db_path = tmp_path / "test.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.execute(io._CREATE_TABLE_SQL)
+        conn.execute(
+            "INSERT INTO applications (company, role, offer_url, detection_date, status) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (
+                "Acme",
+                "ML Engineer",
+                "https://jobs.example.com/2",
+                "2026-01-01",
+                "À envoyer",
+            ),
+        )
+        conn.commit()
+        conn.close()
+
+        abandoned = io.expire_stale_offers(db_path)
+        assert abandoned == 0
+
+        conn2 = sqlite3.connect(str(db_path))
+        row = conn2.execute("SELECT status FROM applications").fetchone()
+        conn2.close()
+        assert row[0] == "À envoyer"
+
+    def test_non_a_envoyer_status_not_checked(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: pytest.TempPath
+    ) -> None:
+        import scripts.import_offers as io
+
+        checked = []
+        monkeypatch.setattr(
+            "scripts.import_offers.check_liveness",
+            lambda url, **kw: checked.append(url) or ("expired", "http_404"),
+        )
+        db_path = tmp_path / "test.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.execute(io._CREATE_TABLE_SQL)
+        conn.execute(
+            "INSERT INTO applications (company, role, offer_url, detection_date, status) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (
+                "Acme",
+                "ML Engineer",
+                "https://jobs.example.com/3",
+                "2026-01-01",
+                "Envoyée",
+            ),
+        )
+        conn.commit()
+        conn.close()
+
+        io.expire_stale_offers(db_path)
+        assert len(checked) == 0  # "Envoyée" offers are not checked

@@ -375,23 +375,36 @@ async def profile_save_projects(request: Request, data: str = Form("")):
 
 async def _run_scan_task(app_state) -> None:
     try:
-        from scripts.import_offers import _run_pipeline, import_offers
+        from scripts.import_offers import (
+            _run_pipeline,
+            expire_stale_offers,
+            import_offers,
+        )
         from scripts.pre_filter import load_settings
 
         settings = load_settings()
-        app_state.scan_result["found"] = 0
-        app_state.scan_result["scored"] = 0
+        app_state.scan_result = {
+            "inserted": 0,
+            "skipped": 0,
+            "found": 0,
+            "scored": 0,
+            "abandoned": 0,
+            "error": "",
+        }
 
         offers = await _run_pipeline(settings)
         app_state.scan_result["found"] = len(offers)
         app_state.scan_result["scored"] = len(offers)
 
         inserted, skipped = import_offers(offers, DB_PATH)
+        abandoned = expire_stale_offers(DB_PATH)
+
         app_state.scan_result = {
             "inserted": inserted,
             "skipped": skipped,
             "found": len(offers),
             "scored": len(offers),
+            "abandoned": abandoned,
             "error": "",
         }
         app_state.scan_status = "done"
@@ -401,6 +414,7 @@ async def _run_scan_task(app_state) -> None:
             "skipped": 0,
             "found": 0,
             "scored": 0,
+            "abandoned": 0,
             "error": str(exc).splitlines()[0],
         }
         app_state.scan_status = "error"

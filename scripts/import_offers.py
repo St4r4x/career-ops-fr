@@ -154,6 +154,32 @@ def import_offers_with_liveness(
     return inserted, skipped, expired_count
 
 
+def expire_stale_offers(db_path: Path) -> int:
+    """Check liveness of all 'À envoyer' offers and mark expired ones as 'Abandonnée'.
+
+    Returns the number of offers marked as abandoned.
+    """
+    conn = sqlite3.connect(str(db_path))
+    try:
+        rows = conn.execute(
+            "SELECT id, offer_url FROM applications WHERE status = 'À envoyer' AND offer_url != ''"
+        ).fetchall()
+        abandoned = 0
+        for row_id, url in rows:
+            status, reason = check_liveness(url)
+            if status == "expired":
+                conn.execute(
+                    "UPDATE applications SET status = 'Abandonnée' WHERE id = ?",
+                    (row_id,),
+                )
+                logger.info("Expired (liveness %s): id=%d url=%s", reason, row_id, url)
+                abandoned += 1
+        conn.commit()
+    finally:
+        conn.close()
+    return abandoned
+
+
 async def _run_pipeline(settings: dict) -> list[RawOffer]:
     search_cfg: dict = settings.get("search", {})
     keyword_list: list[str] = search_cfg.get("keywords", ["AI Engineer"])

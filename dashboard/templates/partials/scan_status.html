@@ -25,7 +25,7 @@
     hx-target="#scan-status"
     hx-swap="outerHTML"
     class="text-sm px-3 py-1 rounded bg-emerald-700 hover:bg-emerald-600 text-white">
-    ✓ {{ result.inserted }} nouvelle{% if result.inserted != 1 %}s{% endif %} — Scanner
+    ✓ {{ result.inserted }} nouvelle{% if result.inserted != 1 %}s{% endif %}{% if result.get('abandoned', 0) > 0 %}, {{ result.abandoned }} expirée{% if result.abandoned != 1 %}s{% endif %}{% endif %} — Scanner
   </button>
 </div>
 

@@ -11,6 +11,16 @@ import re
 
 import httpx
 
+_APEC_OFFRE_RE = re.compile(r"/detail-offre/(\d+[A-Z]?)", re.IGNORECASE)
+_APEC_API = "https://www.apec.fr/cms/webservices/offre/public?numeroOffre={}"
+_APEC_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept-Language": "fr-FR,fr;q=0.9",
+}
+
 logger = logging.getLogger(__name__)
 
 _EXPIRED_URL_RE = re.compile(
@@ -19,20 +29,31 @@ _EXPIRED_URL_RE = re.compile(
 )
 
 _EXPIRED_BODY_PATTERNS: list[str] = [
-    # French
+    # APEC
+    "n'est plus en ligne",
+    "cette offre n'est plus en ligne",
     "offre expirée",
     "offre pourvue",
-    "poste pourvu",
-    "ce poste n'est plus disponible",
     "cette offre a expiré",
     "offre clôturée",
+    "découvrez d'autres offres similaires",
+    # Generic French
+    "poste pourvu",
+    "ce poste n'est plus disponible",
+    "cette offre n'est plus disponible",
+    "offre non disponible",
+    "annonce expirée",
+    "cette annonce a expiré",
+    # WTTJ / Lever / Greenhouse
+    "this job is no longer available",
+    "this position is no longer available",
+    "this role is no longer available",
     # English
     "job no longer available",
     "position has been filled",
     "this job has expired",
     "job has been removed",
-    "no longer accepting",
-    "this job is no longer available",
+    "no longer accepting applications",
     "this position has been filled",
 ]
 
@@ -52,6 +73,37 @@ def check_liveness(url: str, *, timeout: int = _GET_TIMEOUT) -> tuple[str, str]:
 
     if _EXPIRED_URL_RE.search(url):
         return "expired", "url_pattern"
+
+    # APEC SPA pages don't expose expiry via HTTP — use the internal REST API instead
+    if "apec.fr" in url:
+        m = _APEC_OFFRE_RE.search(url)
+        if m:
+            try:
+                api_url = _APEC_API.format(m.group(1))
+                with httpx.Client(follow_redirects=True, timeout=timeout) as client:
+                    r = client.get(api_url, headers=_APEC_HEADERS)
+                    if r.status_code == 404:
+                        return "expired", "apec_api_404"
+                    if r.status_code == 200:
+                        try:
+                            data = r.json()
+                            # All content fields empty = offer expired/removed
+                            content = " ".join(
+                                str(data.get(k) or "")
+                                for k in (
+                                    "texteHtml",
+                                    "texteHtmlProfil",
+                                    "texteHtmlEntreprise",
+                                )
+                            ).strip()
+                            if not content:
+                                return "expired", "apec_api_empty"
+                            return "active", "ok"
+                        except Exception:
+                            pass
+            except (httpx.ConnectError, httpx.TimeoutException, httpx.InvalidURL):
+                return "uncertain", "network_error:apec"
+        return "uncertain", "apec_no_id"
 
     try:
         with httpx.Client(follow_redirects=True, timeout=timeout) as client:

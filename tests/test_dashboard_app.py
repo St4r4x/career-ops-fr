@@ -292,6 +292,39 @@ class TestOfferStatus:
         assert r.status_code == 422
 
 
+class TestOfferNotes:
+    def test_notes_saved_and_returned(self, client_with_data):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        row = db.get_all({})[0]
+        r = client_with_data.post(
+            f"/offers/{row['id']}/notes",
+            data={
+                "notes": "Question à poser : stack MLOps\nPoint clé : remote possible ?"
+            },
+        )
+        assert r.status_code == 200
+        assert "Question" in r.text
+        updated = db.get_by_id(row["id"])
+        assert "Question à poser" in updated["notes"]
+
+    def test_notes_empty_clears_field(self, client_with_data):
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        row = db.get_all({})[0]
+        db.update(row["id"], {"notes": "old note"})
+        r = client_with_data.post(f"/offers/{row['id']}/notes", data={"notes": ""})
+        assert r.status_code == 200
+        updated = db.get_by_id(row["id"])
+        assert updated["notes"] == ""
+
+    def test_notes_404_for_missing_offer(self, client):
+        r = client.post("/offers/99999/notes", data={"notes": "test"})
+        assert r.status_code == 404
+
+
 class TestStats:
     def test_stats_returns_200(self, client_with_data):
         r = client_with_data.get("/stats")

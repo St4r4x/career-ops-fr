@@ -63,12 +63,9 @@
   </div>
   {% endif %}
 
-  {% if offer.notes %}
   <div class="mb-6">
-    <p class="text-slate-400 text-sm mb-1">Notes</p>
-    <p class="text-slate-200 text-sm whitespace-pre-wrap bg-slate-800 rounded p-3">{{ offer.notes }}</p>
+    {% include "partials/offer_notes.html" %}
   </div>
-  {% endif %}
 
   <!-- Status quick-change -->
   <div class="mb-4">

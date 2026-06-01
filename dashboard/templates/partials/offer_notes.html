@@ -1,0 +1,25 @@
+<div id="offer-notes-{{ offer.id }}">
+  <div class="flex items-center justify-between mb-1">
+    <p class="text-slate-400 text-sm">Notes</p>
+    {% if saved %}
+    <span class="text-xs text-emerald-400" id="notes-saved-{{ offer.id }}">✓ Sauvegardé</span>
+    <script>
+      setTimeout(function() {
+        var el = document.getElementById("notes-saved-{{ offer.id }}");
+        if (el) el.style.display = "none";
+      }, 2000);
+    </script>
+    {% endif %}
+  </div>
+  <textarea
+    name="notes"
+    rows="6"
+    placeholder="Questions à poser, points clés, impressions, contacts…"
+    class="w-full bg-slate-800 text-slate-200 text-sm rounded p-3 border border-slate-600 focus:outline-none focus:border-violet-500 resize-y"
+    hx-post="/offers/{{ offer.id }}/notes"
+    hx-trigger="keyup changed delay:800ms"
+    hx-target="#offer-notes-{{ offer.id }}"
+    hx-swap="outerHTML"
+    hx-include="this"
+  >{{ offer.notes or "" }}</textarea>
+</div>

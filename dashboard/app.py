@@ -191,6 +191,21 @@ async def offer_delete(request: Request, offer_id: int):
     )
 
 
+@app.post("/offers/{offer_id}/notes", response_class=HTMLResponse)
+async def offer_notes(
+    request: Request, offer_id: int, notes: str = Form("")
+) -> HTMLResponse:
+    db = request.app.state.db
+    if db.get_by_id(offer_id) is None:
+        raise HTTPException(status_code=404, detail="Offer not found")
+    offer = db.update(offer_id, {"notes": notes})
+    return templates.TemplateResponse(
+        request,
+        "partials/offer_notes.html",
+        {"offer": offer, "saved": True},
+    )
+
+
 @app.post("/offers/{offer_id}/status", response_class=HTMLResponse)
 async def offer_status(request: Request, offer_id: int, status: str = Form(...)):
     if status not in VALID_STATUSES:

@@ -36,6 +36,15 @@ Update `CHANGELOG.md` before every commit that touches source code. The only exc
 - `dashboard/profile_parser.py` — describe the bug and fix
 ```
 
+### Commit checklist — never skip
+
+Before every commit that touches source code:
+1. Update `CHANGELOG.md` under `## [Unreleased]` (or today's date section)
+2. Update `README.md` if the public interface changed (new script, route, config, Docker step)
+3. Run `pytest` and confirm all tests pass
+
+**The CHANGELOG update must be in the same commit as the code change — not a follow-up commit.**
+
 ### When to update README.md
 
 Update `README.md` when any of these change:

@@ -7,6 +7,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 2026-06-03
+
+### Added
+- `config/cv.yaml` (gitignored) — CV content file (FR + EN): experience, skills, education, hobbies; replaces hardcoded data in `generate_pdf.py`
+- `config/cv.yaml.example` — template for new contributors
+
+### Changed
+- `scripts/generate_pdf.py` — `default_context(lang)` now loads from `config/cv.yaml` via `_load_cv()`; `default_context_en()` kept as backwards-compatible shim; all hardcoded personal content removed from source
+- `.gitignore` — added `config/cv.yaml`
+- `README.md` — full rewrite for new users: pipeline diagram, 5-step setup, scoring signal table, prepare-candidature phases, config table with gitignored flags
+
+## 2026-06-02
+
+### Added
+- `scripts/generate_pdf.py` -- `--lang en` flag: generates an English CV using a new `default_context_en()` function with fully translated content (experience bullets, job types, education labels, languages); output filename suffixed `-en.pdf`
+- `templates/cv-en/cv.html.j2` -- English CV template (section labels: Profile, Experience, Skills, Education, Languages)
+- `templates/cv-en/cv.css` -- copy of fr CSS for the English template
+
+### Added
+- `scripts/generate_pdf.py` -- `hobbies` field in `build_cv_context()` and both `default_context()` / `default_context_en()` (Sport — tennis, padel · Video games · Cinema · Travel)
+- `templates/cv-fr/cv.html.j2` -- "Centres d'intérêt" section rendered when `hobbies` is non-empty
+- `templates/cv-en/cv.html.j2` -- "Interests" section rendered when `hobbies` is non-empty
+
+### Fixed
+- `templates/cover-letter-fr/cover-letter.html.j2` -- subject line and closing line were hardcoded in French; both now accept optional `subject` / `closing_line` template variables with French fallback, enabling fully English cover letters
+- `scripts/generate_cover_letter.py` -- forward `subject` and `closing_line` keys from `--context-file` JSON into the template context
+
+### Changed
+- `scripts/generate_pdf.py` -- `TEMPLATE_DIR` split into `TEMPLATE_DIR_FR` / `TEMPLATE_DIR_EN`; `render_html()` and `generate_pdf()` accept a `lang` parameter to select the correct template directory
+
 ## 2026-05-29 (later)
 
 ### Fixed

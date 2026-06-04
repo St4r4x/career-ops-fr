@@ -1,23 +1,42 @@
 {% if not offers %}
-<div class="p-4 text-slate-500 text-sm">Aucune offre trouvée.</div>
+<div class="p-5 text-slate-500 text-sm text-center mt-8">Aucune offre trouvée.</div>
 {% endif %}
 {% for offer in offers %}
+{% set initials = (offer.company[:1] | upper) if offer.company else '?' %}
 <div
-  class="px-3 py-2 border-b border-slate-800 cursor-pointer hover:bg-slate-800 flex items-center gap-2"
+  class="px-3 py-2.5 cursor-pointer transition-colors flex items-center gap-3"
+  style="border-bottom:1px solid #221845;"
+  onmouseover="this.style.background='#251b45'"
+  onmouseout="this.style.background='transparent'"
   hx-get="/offers/{{ offer.id }}"
   hx-target="#offer-detail"
   hx-swap="innerHTML">
-  <span class="text-xs px-2 py-0.5 rounded font-medium shrink-0
-    {{ STATUS_COLORS.get(offer.status, 'bg-gray-700 text-gray-200') }}">
-    {{ offer.status }}
-  </span>
-  <span class="text-xs px-1.5 py-0.5 rounded font-bold shrink-0
-    {{ GRADE_COLORS.get(offer.score_grade, 'bg-gray-700 text-gray-200') }}">
-    {{ offer.score_grade }}
-  </span>
-  <div class="min-w-0">
-    <div class="text-sm text-slate-200 truncate">{{ offer.company }}</div>
-    <div class="text-xs text-slate-400 truncate">{{ offer.role }}</div>
+
+  <!-- Avatar initials -->
+  <div class="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white bg-accent">
+    {{ initials }}
+  </div>
+
+  <!-- Company + role -->
+  <div class="min-w-0 flex-1">
+    <div class="text-sm font-semibold truncate" style="color:#f1f5f9;">{{ offer.company }}</div>
+    <div class="text-xs truncate" style="color:#8b5cf6;">{{ offer.role }}</div>
+  </div>
+
+  <!-- Grade badge -->
+  <div class="shrink-0 flex flex-col items-end gap-1">
+    <span class="text-xs px-2 py-0.5 rounded font-bold
+      {% if offer.score_grade == 'A' %}grade-a
+      {% elif offer.score_grade == 'B' %}grade-b
+      {% elif offer.score_grade == 'C' %}grade-c
+      {% elif offer.score_grade == 'D' %}grade-d
+      {% else %}grade-f{% endif %}">
+      {{ offer.score_grade }}
+    </span>
+    <span class="text-xs px-1.5 py-0.5 rounded font-medium
+      {{ STATUS_COLORS.get(offer.status, 'bg-gray-700 text-gray-200') }}">
+      {{ offer.status }}
+    </span>
   </div>
 </div>
 {% endfor %}

@@ -1,8 +1,8 @@
 <div id="offer-notes-{{ offer.id }}">
-  <div class="flex items-center justify-between mb-1">
-    <p class="text-slate-400 text-sm">Notes</p>
+  <div class="flex items-center justify-between mb-1.5">
+    <p style="color:#8b5cf6;" class="text-sm font-medium">Notes</p>
     {% if saved %}
-    <span class="text-xs text-emerald-400" id="notes-saved-{{ offer.id }}">✓ Sauvegardé</span>
+    <span class="text-xs" style="color:#4ade80;" id="notes-saved-{{ offer.id }}">✓ Sauvegardé</span>
     <script>
       setTimeout(function() {
         var el = document.getElementById("notes-saved-{{ offer.id }}");
@@ -15,7 +15,10 @@
     name="notes"
     rows="6"
     placeholder="Questions à poser, points clés, impressions, contacts…"
-    class="w-full bg-slate-800 text-slate-200 text-sm rounded p-3 border border-slate-600 focus:outline-none focus:border-violet-500 resize-y"
+    class="w-full text-sm rounded-lg p-3 resize-y focus:outline-none transition-colors placeholder-slate-500"
+    style="background:#1e1535;border:1px solid #2d1f5e;color:#e2e8f0;"
+    onfocus="this.style.borderColor='#6366f1'"
+    onblur="this.style.borderColor='#2d1f5e'"
     hx-post="/offers/{{ offer.id }}/notes"
     hx-trigger="keyup changed delay:800ms"
     hx-target="#offer-notes-{{ offer.id }}"

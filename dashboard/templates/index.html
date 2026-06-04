@@ -3,18 +3,20 @@
 <div class="flex h-full gap-0">
 
   <!-- Left panel: filters + list -->
-  <div class="w-96 shrink-0 flex flex-col border-r border-slate-700 bg-slate-900">
+  <div class="w-96 shrink-0 flex flex-col" style="background:#1e1535;border-right:1px solid #2d1f5e;">
     <!-- Filter bar -->
-    <div class="p-3 border-b border-slate-700 flex flex-col gap-2">
+    <div class="p-3 flex flex-col gap-2" style="border-bottom:1px solid #2d1f5e;">
       <input
-        class="w-full bg-slate-800 text-slate-200 text-sm rounded px-3 py-2 border border-slate-600 focus:outline-none focus:border-violet-500"
-        type="text" name="q" placeholder="Rechercher entreprise ou rôle..."
+        style="background:#0f0a1e;border:1px solid #2d1f5e;color:#e2e8f0;"
+        class="w-full text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500 transition-colors placeholder-slate-500"
+        type="text" name="q" placeholder="🔍  Rechercher entreprise ou rôle..."
         hx-get="/offers" hx-trigger="keyup changed delay:300ms"
         hx-target="#offer-list" hx-include="[name='status'],[name='grade']"
         id="search-input">
       <div class="flex gap-2">
         <select name="status" id="status-filter"
-          class="flex-1 bg-slate-800 text-slate-200 text-sm rounded px-2 py-2 border border-slate-600 focus:outline-none focus:border-violet-500"
+          style="background:#0f0a1e;border:1px solid #2d1f5e;color:#e2e8f0;"
+          class="flex-1 text-sm rounded-lg px-2 py-2 focus:outline-none focus:border-indigo-500 transition-colors"
           hx-get="/offers" hx-trigger="change"
           hx-target="#offer-list" hx-include="[name='q'],[name='grade']">
           <option value="">Tous statuts</option>
@@ -23,7 +25,8 @@
           {% endfor %}
         </select>
         <select name="grade" id="grade-filter"
-          class="flex-1 bg-slate-800 text-slate-200 text-sm rounded px-2 py-2 border border-slate-600 focus:outline-none focus:border-violet-500"
+          style="background:#0f0a1e;border:1px solid #2d1f5e;color:#e2e8f0;"
+          class="flex-1 text-sm rounded-lg px-2 py-2 focus:outline-none focus:border-indigo-500 transition-colors"
           hx-get="/offers" hx-trigger="change"
           hx-target="#offer-list" hx-include="[name='q'],[name='status']">
           <option value="">Tous grades</option>

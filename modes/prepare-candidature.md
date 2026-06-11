@@ -134,7 +134,17 @@ sqlite3 dashboard/data/applications.db \
   "UPDATE applications SET cv_path='<cv_path>', cover_letter_path='<cl_path>' WHERE id=<offer_id>;"
 ```
 
-Print:
+If `--no-prep` was used, print:
+```
+✅ Candidature prête — <company> / <role>
+
+CV:             output/<slug>-<date>/cv-<slug>-<date>.pdf
+LM:             output/<slug>-<date>/cover-letter-<slug>-<date>.pdf
+
+Ouvre les 2 PDFs et vérifie avant d'envoyer.
+```
+
+Otherwise, print:
 ```
 ✅ Candidature prête — <company> / <role>
 

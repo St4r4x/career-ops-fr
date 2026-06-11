@@ -140,9 +140,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
 
 
 def open_db(path: Path) -> DB:
-    # check_same_thread=False: FastAPI uses a thread pool for sync operations but
-    # SQLite handles concurrent access internally. The dashboard's write rate is low
-    # enough that Python's GIL and SQLite's internal locking are sufficient.
+    # check_same_thread=False: the background scan task runs in an asyncio coroutine
+    # that may execute on a different OS thread than the one that opened the
+    # connection. SQLite's internal locking handles the low write concurrency here.
     conn = sqlite3.connect(str(path), check_same_thread=False)
     _migrate(conn)
     return DB(conn)

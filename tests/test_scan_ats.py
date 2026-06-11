@@ -162,6 +162,7 @@ class TestLeverProvider:
         httpx_mock.add_response(
             url="https://api.lever.co/v0/postings/acme",
             status_code=500,
+            is_reusable=True,
         )
         import httpx
 
@@ -366,6 +367,7 @@ class TestGreenhouseProviderDescription:
         httpx_mock.add_response(
             url="https://boards-api.greenhouse.io/v1/boards/acme/jobs/99",
             status_code=500,
+            is_reusable=True,
         )
         import httpx
 

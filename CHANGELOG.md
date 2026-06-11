@@ -10,16 +10,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## 2026-06-11
 
 ### Added
-- `scripts/scan_ats.py` — `_fetch_with_retry()` helper: GET with up to 3 attempts and exponential backoff (1s/2s/4s); applied to all main and detail fetches in `GreenhouseProvider`, `LeverProvider`, and `AshbyProvider`
+- `scripts/scan_ats.py` — `_fetch_with_retry()` helper: GET with up to 3 attempts and exponential backoff (1s/2s/4s); 4xx errors (except 429) are not retried; applied to all 5 ATS fetch call sites
 - `modes/rescore-offers.md` — new mode documenting when and how to run `scripts/rescore.py` after changing scoring config
 
 ### Changed
+- `scripts/scan_ats.py` — `_RETRY_ATTEMPTS` derived from `len(_RETRY_BACKOFF)` to keep both in sync; `_TIMEOUT` (10s) used as default for `_fetch_with_retry`; fixed fabricated "Expected output" block in `modes/rescore-offers.md` to show actual output format
 - `scripts/scan_portals.py` — `_enrich()` now wraps `_fetch_description` in `asyncio.wait_for(timeout=15.0)`; timed-out offers log a warning and get an empty description instead of hanging indefinitely
-- `dashboard/db.py` — added inline comment explaining why `check_same_thread=False` is safe for the dashboard's low write rate
-
-
-
-### Changed
+- `dashboard/db.py` — corrected inline comment on `check_same_thread=False` to accurately attribute it to the background scan coroutine rather than FastAPI's thread pool
 - `scripts/pre_filter.py` — extracted magic numbers into named constants: `_DEFAULT_RTT_DAYS` (10), `_ANNUAL_WORKING_DAYS` (218), `_MEAL_TICKET_VALUE_PER_DAY` (9.0), `_INTERESSEMENT_RATE` (0.05); improves maintainability of salary reconstruction logic
 
 ### Fixed

@@ -13,13 +13,13 @@ Use this mode after changing `config/settings.yaml` to recompute scores for all 
 
 ```bash
 # Dry run — preview changes without writing to DB
-python scripts/rescore.py --dry-run
+python -m scripts.rescore --dry-run
 
 # Apply rescoring
-python scripts/rescore.py
+python -m scripts.rescore
 
 # Rescore a specific DB file
-python scripts/rescore.py --db /path/to/applications.db
+python -m scripts.rescore --db /path/to/applications.db
 ```
 
 ## What it does
@@ -33,10 +33,10 @@ python scripts/rescore.py --db /path/to/applications.db
 ## Expected output
 
 ```
-Rescored 156 offers:
-  A: 12 → 15 (+3)
-  B: 34 → 31 (−3)
-  C: 67 → 70 (+3)
-  D: 30 → 28 (−2)
-  F: 13 → 12 (−1)
+Total: 156 offers -- Updated: 23
+```
+
+Individual changes are printed at INFO level (one line per updated offer):
+```
+INFO scripts.rescore: id=42  Mistral AI / AI Engineer          : B/72.0 -> A/85.5
 ```

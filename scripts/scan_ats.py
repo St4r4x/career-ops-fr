@@ -27,24 +27,33 @@ logger = logging.getLogger(__name__)
 
 _DEFAULT_ATS_MAP = Path(__file__).parent.parent / "config" / "ats_map.yaml"
 _TIMEOUT = 10.0
-_RETRY_ATTEMPTS = 3
 _RETRY_BACKOFF = [1.0, 2.0, 4.0]  # seconds between attempts
+_RETRY_ATTEMPTS = len(_RETRY_BACKOFF)
 
 
 async def _fetch_with_retry(
     client: httpx.AsyncClient,
     url: str,
     *,
-    timeout: float = 20.0,
+    timeout: float = _TIMEOUT,
 ) -> httpx.Response:
-    """GET url with up to _RETRY_ATTEMPTS retries and exponential backoff."""
+    """GET url with up to _RETRY_ATTEMPTS retries and exponential backoff.
+
+    4xx errors (except 429) are not retried — they are definitive failures.
+    """
     last_exc: Exception | None = None
-    for attempt, backoff in enumerate(_RETRY_BACKOFF[:_RETRY_ATTEMPTS], start=1):
+    for attempt, backoff in enumerate(_RETRY_BACKOFF, start=1):
         try:
             resp = await client.get(url, timeout=timeout)
             resp.raise_for_status()
             return resp
         except (httpx.RequestError, httpx.HTTPStatusError) as exc:
+            if (
+                isinstance(exc, httpx.HTTPStatusError)
+                and exc.response.status_code < 500
+                and exc.response.status_code != 429
+            ):
+                raise
             last_exc = exc
             if attempt < _RETRY_ATTEMPTS:
                 logger.warning(
@@ -56,7 +65,8 @@ async def _fetch_with_retry(
                     backoff,
                 )
                 await asyncio.sleep(backoff)
-    raise last_exc  # type: ignore[misc]
+    assert last_exc is not None
+    raise last_exc
 
 
 class GreenhouseProvider:

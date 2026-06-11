@@ -18,6 +18,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Changed
 - `templates/cover-letter-fr/cover-letter.html.j2` — subject and closing line now resolve from `subject`/`closing_line` context variables or `lang` fallback
 - `templates/prep-sheet-fr/prep-sheet.html.j2` — section titles use `section_company` / `section_questions` Jinja2 variables with French defaults
+- `templates/partials/offer_detail.html` — action buttons now conditional on offer status: "Préparer candidature" (with optional LM checkbox) shown for apply statuses only; "Préparer entretien" shown for interview statuses only; no action button for terminal statuses
+- `modes/prepare-candidature.md` — added `--no-prep` flag to skip prep sheet generation
+
+### Added
+- `modes/prepare-entretien.md` — new Claude CLI mode generating interview prep sheet only
 
 ## 2026-06-04
 

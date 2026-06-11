@@ -87,6 +87,8 @@
       </div>
 
       <!-- Action buttons -->
+      {% set apply_statuses = ["À envoyer", "Envoyée", "Relance"] %}
+      {% set interview_statuses = ["Entretien RH", "Entretien tech", "Offre"] %}
       <div class="flex flex-col gap-2">
         <button
           class="text-sm px-4 py-2 rounded-lg text-white font-medium transition-colors text-left"
@@ -98,12 +100,29 @@
           hx-swap="innerHTML">
           ✏️ Modifier
         </button>
+
+        {% if offer.status in apply_statuses %}
+        <label class="flex items-center gap-2 text-sm cursor-pointer select-none"
+               style="color:#a5b4fc;">
+          <input type="checkbox" id="lm-toggle-{{ offer.id }}"
+                 class="accent-indigo-500 cursor-pointer">
+          Inclure lettre de motivation
+        </label>
         <button
           class="text-sm px-4 py-2 rounded-lg text-white font-medium bg-accent transition-opacity hover:opacity-90 text-left"
           onclick="copyPrepCmd({{ offer.id }})"
           id="prep-btn-{{ offer.id }}">
           ✦ Préparer candidature
         </button>
+        {% elif offer.status in interview_statuses %}
+        <button
+          class="text-sm px-4 py-2 rounded-lg text-white font-medium bg-accent transition-opacity hover:opacity-90 text-left"
+          onclick="copyInterviewCmd({{ offer.id }})"
+          id="interview-btn-{{ offer.id }}">
+          ✦ Préparer entretien
+        </button>
+        {% endif %}
+
         <button
           class="text-sm px-4 py-2 rounded-lg text-white font-medium transition-colors text-left"
           style="background:rgba(185,28,28,0.25);border:1px solid rgba(185,28,28,0.4);"
@@ -145,9 +164,18 @@
 
   </div>
 
+  {% set apply_statuses2 = ["À envoyer", "Envoyée", "Relance"] %}
+  {% set interview_statuses2 = ["Entretien RH", "Entretien tech", "Offre"] %}
+  {% if offer.status in apply_statuses2 %}
   <script>
   function copyPrepCmd(id) {
-    const cmd = "claude --system-prompt \"$(cat modes/prepare-candidature.md)\" \"Prépare la candidature pour l'offre ID " + id + "\"";
+    var withLm = document.getElementById("lm-toggle-" + id);
+    var cmd;
+    if (withLm && withLm.checked) {
+      cmd = "claude --system-prompt \"$(cat modes/prepare-candidature.md)\" \"Prépare la candidature pour l'offre ID " + id + " --no-prep\"";
+    } else {
+      cmd = "claude --system-prompt \"$(cat modes/generate-cv.md)\" \"Génère le CV pour l'offre ID " + id + "\"";
+    }
     navigator.clipboard.writeText(cmd).then(function() {
       var btn = document.getElementById("prep-btn-" + id);
       btn.textContent = "✓ Commande copiée !";
@@ -155,4 +183,16 @@
     });
   }
   </script>
+  {% elif offer.status in interview_statuses2 %}
+  <script>
+  function copyInterviewCmd(id) {
+    var cmd = "claude --system-prompt \"$(cat modes/prepare-entretien.md)\" \"Prépare l'entretien pour l'offre ID " + id + "\"";
+    navigator.clipboard.writeText.call(navigator.clipboard, cmd).then(function() {
+      var btn = document.getElementById("interview-btn-" + id);
+      btn.textContent = "✓ Commande copiée !";
+      setTimeout(function() { btn.textContent = "✦ Préparer entretien"; }, 2000);
+    });
+  }
+  </script>
+  {% endif %}
 </div>

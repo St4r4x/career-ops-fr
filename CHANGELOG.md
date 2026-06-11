@@ -10,6 +10,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## 2026-06-11
 
 ### Added
+- `tests/test_dashboard_app.py::TestScan::test_scan_task_exception_sets_error_status` — test that verifies `_run_scan_task` correctly sets `scan_status="error"` and captures exception message when `_run_pipeline` raises
 - `scripts/generate_cover_letter.py` — bilingual support (`--lang fr|en`): auto-translated subject line, salutation, and closing; `subject` and `closing_line` overridable via context JSON
 - `scripts/generate_cover_letter.py` — `_normalize_for_ats` stub hook for future ATS sanitisation
 - `scripts/generate_prep_sheet.py` — `section_company` and `section_questions` i18n parameters; `_normalize_for_ats` stub

@@ -1,10 +1,27 @@
 # dashboard/db.py
 from __future__ import annotations
 
+import json
+import re
 import sqlite3
 from datetime import date
 from pathlib import Path
 from typing import Any
+
+_SAL_RANGE_RE = re.compile(r"(\d+)\s*[-–]\s*\d+\s*k", re.IGNORECASE)
+_SAL_FROM_RE = re.compile(r"partir\s+de\s+(\d+)\s*k", re.IGNORECASE)
+
+
+def _parse_salary_min(text: str) -> int | None:
+    """Return the lower bound in k€, or None if unparseable."""
+    m = _SAL_RANGE_RE.search(text)
+    if m:
+        return int(m.group(1))
+    m = _SAL_FROM_RE.search(text)
+    if m:
+        return int(m.group(1))
+    return None
+
 
 VALID_STATUSES = [
     "À envoyer",
@@ -25,7 +42,7 @@ _FOLLOW_UP_DAYS = 7
 _SELECT = """
 SELECT id, company, role, offer_url, detection_date, score_grade, score_value,
        status, send_date, contacts, notes, cv_path, cover_letter_path,
-       follow_up_date, description
+       follow_up_date, description, portal
 FROM applications
 """
 
@@ -54,8 +71,26 @@ class DB:
             params.extend([like, like])
         where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
         sql = f"{_SELECT} {where} ORDER BY detection_date DESC"
-        rows = self.conn.execute(sql, params).fetchall()
-        return [_row_to_dict(r) for r in rows]
+        rows = [_row_to_dict(r) for r in self.conn.execute(sql, params).fetchall()]
+        if sal_min := filters.get("sal_min"):
+            try:
+                threshold = int(sal_min)
+            except ValueError:
+                threshold = None
+            if threshold is not None:
+
+                def _above_threshold(r: dict) -> bool:
+                    raw = r.get("description", "")
+                    try:
+                        d = json.loads(raw)
+                        sal_text = d.get("salaire", "")
+                    except (json.JSONDecodeError, ValueError):
+                        sal_text = ""
+                    v = _parse_salary_min(sal_text)
+                    return v is not None and v >= threshold
+
+                rows = [r for r in rows if _above_threshold(r)]
+        return rows
 
     def get_by_id(self, id: int) -> dict | None:
         row = self.conn.execute(f"{_SELECT} WHERE id = ?", (id,)).fetchone()
@@ -77,6 +112,7 @@ class DB:
             "cover_letter_path",
             "follow_up_date",
             "description",
+            "portal",
         }
         updates = {k: v for k, v in fields.items() if k in allowed}
         if not updates:
@@ -135,6 +171,11 @@ def _migrate(conn: sqlite3.Connection) -> None:
     if "description" not in existing:
         conn.execute(
             "ALTER TABLE applications ADD COLUMN description TEXT NOT NULL DEFAULT ''"
+        )
+        conn.commit()
+    if "portal" not in existing:
+        conn.execute(
+            "ALTER TABLE applications ADD COLUMN portal TEXT NOT NULL DEFAULT ''"
         )
         conn.commit()
 

@@ -2,10 +2,25 @@
 
 from __future__ import annotations
 
+import json
 import re
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import date
-from typing import Optional
+
+
+@dataclass
+class ParsedDescription:
+    """Structured fields extracted from a raw job description."""
+
+    mission: str = ""
+    profil: str = ""
+    stack: str = ""
+    avantages: str = ""
+    contrat: str = ""
+    salaire: str = ""
+
+    def to_json(self) -> str:
+        return json.dumps(asdict(self), ensure_ascii=False)
 
 
 @dataclass
@@ -16,11 +31,12 @@ class RawOffer:
     company: str
     url: str
     portal: str
-    location: Optional[str] = None
-    date_posted: Optional[date] = None
+    location: str | None = None
+    date_posted: date | None = None
     score: float = 0.0
     tags: list[str] = field(default_factory=list)
     description: str = ""
+    parsed_description: ParsedDescription | None = None
 
     def dedup_key(self) -> str:
         title_norm = self.title.lower().strip()

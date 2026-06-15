@@ -24,9 +24,12 @@ CREATE TABLE IF NOT EXISTS applications (
 
 @pytest.fixture
 def db():
+    from db import _migrate  # noqa: PLC0415
+
     conn = sqlite3.connect(":memory:")
     conn.execute(CREATE_SQL)
     conn.commit()
+    _migrate(conn)
     return DB(conn)
 
 
@@ -129,9 +132,12 @@ class TestUpdate:
         assert result["notes"] == "Updated"
 
     def test_update_description(self) -> None:
+        from db import _migrate  # noqa: PLC0415
+
         conn = sqlite3.connect(":memory:")
         conn.execute(CREATE_SQL)
         conn.commit()
+        _migrate(conn)
         conn.execute(
             "INSERT INTO applications (company, role, offer_url, detection_date) VALUES (?,?,?,?)",
             ("Acme", "Dev", "https://x.com/1", "2026-05-25"),
@@ -203,3 +209,33 @@ class TestValidStatuses:
         assert "À envoyer" in VALID_STATUSES
         assert "Acceptée" in VALID_STATUSES
         assert len(VALID_STATUSES) == 9
+
+
+def test_portal_column_created_by_migration() -> None:
+    conn = sqlite3.connect(":memory:")
+    conn.execute("""
+        CREATE TABLE applications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company TEXT NOT NULL,
+            role TEXT NOT NULL,
+            offer_url TEXT NOT NULL DEFAULT '',
+            detection_date TEXT NOT NULL,
+            score_grade TEXT NOT NULL DEFAULT '',
+            score_value REAL NOT NULL DEFAULT 0.0,
+            status TEXT NOT NULL DEFAULT 'À envoyer',
+            send_date TEXT,
+            contacts TEXT NOT NULL DEFAULT '',
+            notes TEXT NOT NULL DEFAULT '',
+            cv_path TEXT NOT NULL DEFAULT '',
+            cover_letter_path TEXT NOT NULL DEFAULT '',
+            follow_up_date TEXT,
+            description TEXT NOT NULL DEFAULT ''
+        )
+    """)
+    from dashboard.db import _migrate
+
+    _migrate(conn)
+    cols = {
+        row[1] for row in conn.execute("PRAGMA table_info(applications)").fetchall()
+    }
+    assert "portal" in cols

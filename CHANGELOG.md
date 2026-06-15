@@ -7,6 +7,48 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 2026-06-15 (3)
+
+### Added
+- `dashboard/db.py` — `_parse_salary_min()` helper: extracts lower bound in k€ from APEC salary strings ("40 - 55 k€" → 40, "A partir de 45 k€" → 45, unparseable → None); `get_all()` filters by `sal_min` threshold in Python post-fetch; "A négocier" and missing salaries are excluded when a threshold is set
+- `dashboard/app.py` — `/offers` route accepts `sal_min` query param
+- `dashboard/templates/index.html` — salary filter select (≥ 40/50/60/70/80k€), all existing `hx-include` updated to carry `sal_min`
+
+## 2026-06-15 (2)
+
+### Changed
+- `scripts/backfill_descriptions.py` — `ApecApiExtractor` now builds `ParsedDescription` directly from APEC API structured fields: `competences[]` (SAVOIR_FAIRE type) → `stack`, `salaireTexte` → `salaire`, `texteHtmlEntreprise` → `avantages`; returns pre-built JSON bypassing text re-parsing; `_save_parsed()` detects pre-built JSON and stores it directly; backfill query adds `portal='apec' AND stack=''` condition to re-enrich already-parsed APEC rows
+- Result: 196/372 APEC rows now have structured `stack` (techs from API competences), 372/431 total rows have `salaire`; 176 APEC rows without stack are expired offers (API 404, re-parsed from stored text only)
+
+## 2026-06-15
+
+### Fixed
+- `scripts/description_parser.py` — dispatcher now auto-detects HTML (`<h[234]>` scan) and APEC blobs (`"Descriptif du poste"` marker) regardless of `portal` value; falls back to `_parse_heuristic` instead of dead-end `_parse_generic`; `_parse_html_headings` fallback also runs `_parse_heuristic` on extracted plain text when no headings found; heading and section regexes expanded with English patterns from Lever/Greenhouse jobs (Mistral, Dataiku, Artefact)
+- `scripts/scan_ats.py` — Greenhouse provider applies `unescape()` on doubly-encoded HTML entities; Lever provider prefers `descriptionPlain` (Lever uses `<strong style>` not `<h2>/<h3>`, so plain text feeds `_parse_heuristic` more effectively); Ashby provider prefers `descriptionBody` over `descriptionPlain`
+- `scripts/backfill_descriptions.py` — `GreenhouseApiExtractor` applies `unescape()`, `LeverApiExtractor` reverted to prefer plain text; APEC extractor emits structured text with `"Descriptif du poste"` / `"Profil recherché"` markers instead of one flat blob; backfill query re-processes rows where all non-`mission` fields are empty; portal inferred and persisted for legacy rows; rows with existing plain-text description are re-parsed directly without a network call (handles expired APEC offers that return 404)
+- `scripts/import_offers.py` — `infer_portal_from_url()` fills empty `portal` column at insert time using URL hostname
+
+### Fixed
+- `scripts/dedup.py` — added `normalize_offer_url()`: strips query params for APEC URLs (offer ID is in path, `page=` / `selectedIndex=` are search context and caused duplicate inserts across scans); detection uses both portal field and URL hostname so legacy rows with empty portal are covered
+- `scripts/import_offers.py` — `existing_urls()` and both import loops now use `normalize_offer_url()` so APEC offers with different query strings are correctly recognised as duplicates
+
+### Changed
+- DB cleanup: removed 477 duplicate entries (455 + 22 earlier) from `applications` (886 → 431); protected rows with status Envoyée/Refusée were untouched
+
+### Added
+- `scripts/description_parser.py` — new module with public `parse_description(raw, portal) -> ParsedDescription`; dispatches to portal-specific heuristic parsers: APEC (French section-marker regex), Lever/Greenhouse/Ashby (HTML `<h2>`–`<h4>` headings), Indeed/WTTJ/LinkedIn/Glassdoor (keyword-line heuristics), generic fallback (everything → mission)
+- `scripts/models.py` — `ParsedDescription` dataclass with 6 fields: `mission`, `profil`, `stack`, `avantages`, `contrat`, `salaire`; added `parsed_description: ParsedDescription | None = None` to `RawOffer`
+- `dashboard/db.py` — `_migrate()`: adds `portal TEXT NOT NULL DEFAULT ''` column to `applications` table idempotently; `_SELECT` and `DB.update()` updated to include `portal`
+- `tests/test_description_parser.py` — 19 tests covering all portals and both paths (parsed + raw fallback)
+- `tests/test_dashboard_db.py` — `test_portal_column_created_by_migration`
+
+### Changed
+- `scripts/import_offers.py` — `insert_offer()` now calls `parse_description()` and writes a JSON-serialised `ParsedDescription` to the `description` column; `portal` column populated on every insert; skip-path UPDATE also serialises to JSON
+- `scripts/pre_filter.py` — `score_offer()` uses new `_desc_blob(offer)` helper: concatenates all 6 `ParsedDescription` fields when available, falls back to raw `offer.description` for legacy rows
+- `scripts/backfill_descriptions.py` — after extracting raw HTML text, calls `parse_description(desc, portal)` and saves JSON instead of plain text; DB query now reads `portal` column via `COALESCE(portal, '')`
+- `dashboard/app.py` — added `_parse_description(raw) -> dict | str` helper; all 3 routes returning `offer_detail.html` inject `parsed_desc` into the template context
+- `dashboard/templates/partials/offer_detail.html` — description block renders 6 labelled sections (Missions, Profil recherché, Stack technique, Avantages, Contrat, Salaire) when `parsed_desc` is a mapping; falls back to plain-text display for legacy rows
+
 ## 2026-06-11 (2)
 
 ### Added

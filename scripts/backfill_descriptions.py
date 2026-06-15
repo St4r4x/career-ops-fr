@@ -15,6 +15,9 @@ from typing import Protocol
 import httpx
 from playwright.async_api import Page, async_playwright
 
+from scripts.description_parser import parse_description
+from scripts.import_offers import infer_portal_from_url
+
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
@@ -101,12 +104,13 @@ class LeverApiExtractor:
         except Exception as exc:
             logger.debug("Lever API error for %s: %s", url[:80], exc)
             return ""
-        # Prefer plain text; fall back to HTML → text
+        # Lever HTML uses <strong style="font-size:24px"> not <h2>/<h3>, so plain text
+        # is better for heuristic splitting.  Prefer descriptionPlain; fall back to HTML.
         plain = (data.get("descriptionPlain") or "").strip()
         if len(plain) >= MIN_DESC_LENGTH:
-            return plain
+            return plain[:8000]
         html = (data.get("description") or "").strip()
-        return _html_to_text(html) if html else ""
+        return html[:8000] if len(html) >= MIN_DESC_LENGTH else ""
 
 
 class GreenhouseApiExtractor:
@@ -129,14 +133,21 @@ class GreenhouseApiExtractor:
         except Exception as exc:
             logger.debug("Greenhouse API error for %s: %s", url[:80], exc)
             return ""
-        html = (data.get("content") or "").strip()
-        return _html_to_text(html) if html else ""
+        html = unescape(data.get("content") or "").strip()
+        return html[:8000] if html else ""
 
 
 class ApecApiExtractor:
     """APEC internal webservice — discovered via network interception, no auth required.
 
-    Combines texteHtml (mission) + texteHtmlProfil (profile) + texteHtmlEntreprise (company).
+    Builds ParsedDescription directly from structured API fields:
+      - texteHtml          → mission
+      - texteHtmlProfil    → profil
+      - competences[]      → stack  (SAVOIR_FAIRE type only)
+      - texteHtmlEntreprise → avantages
+      - salaireTexte       → salaire
+    Returns a JSON-serialised ParsedDescription (not raw text) so _save_parsed
+    can store it directly without re-parsing.
     The offer ID includes an optional uppercase letter suffix (e.g. 178734687W).
     """
 
@@ -146,6 +157,8 @@ class ApecApiExtractor:
     _API = "https://www.apec.fr/cms/webservices/offre/public?numeroOffre={}"
 
     async def extract(self, client: httpx.AsyncClient, url: str) -> str:
+        from scripts.models import ParsedDescription
+
         m = self._OFFRE_RE.search(url)
         if not m:
             return ""
@@ -161,12 +174,29 @@ class ApecApiExtractor:
         except Exception as exc:
             logger.debug("APEC API error for %s: %s", url[:80], exc)
             return ""
-        parts = [
-            _html_to_text(data.get("texteHtml") or ""),
-            _html_to_text(data.get("texteHtmlProfil") or ""),
-            _html_to_text(data.get("texteHtmlEntreprise") or ""),
+
+        mission = _html_to_text(data.get("texteHtml") or "")
+        profil = _html_to_text(data.get("texteHtmlProfil") or "")
+        avantages = _html_to_text(data.get("texteHtmlEntreprise") or "")
+        salaire = (data.get("salaireTexte") or "").strip()
+
+        # Competences: keep only SAVOIR_FAIRE (tools/techs), join as comma list
+        stack_items = [
+            c["libelle"]
+            for c in (data.get("competences") or [])
+            if c.get("type") == "SAVOIR_FAIRE"
         ]
-        return " ".join(p for p in parts if p).strip()
+        stack = ", ".join(stack_items)
+
+        pd = ParsedDescription(
+            mission=mission,
+            profil=profil,
+            stack=stack,
+            avantages=avantages,
+            salaire=salaire,
+        )
+        # Return JSON so _save_parsed stores it directly (no text re-parsing needed)
+        return pd.to_json() if mission else ""
 
 
 class AshbyJsonLdExtractor:
@@ -192,7 +222,7 @@ class AshbyJsonLdExtractor:
                 continue
             if data.get("@type") == "JobPosting":
                 html = (data.get("description") or "").strip()
-                return _html_to_text(html) if html else ""
+                return html[:8000] if html else ""
         return ""
 
 
@@ -229,6 +259,14 @@ class IndeedExtractor:
 # ---------------------------------------------------------------------------
 
 
+def _is_valid_json(s: str) -> bool:
+    try:
+        json.loads(s)
+        return True
+    except (json.JSONDecodeError, ValueError):
+        return False
+
+
 def get_extractor(
     url: str,
 ) -> HttpExtractor | BrowserExtractor | None:
@@ -253,16 +291,31 @@ def get_extractor(
 async def main() -> None:
     conn = sqlite3.connect(DB_PATH)
     rows = conn.execute(
-        "SELECT id, offer_url FROM applications"
-        " WHERE length(description) < 50"
-        " ORDER BY id"
+        """SELECT id, offer_url, COALESCE(portal, '') AS portal,
+                  COALESCE(description, '') AS description
+           FROM applications
+           WHERE length(description) < 50
+              OR NOT json_valid(description)
+              OR (
+                   json_valid(description)
+                   AND json_extract(description, '$.profil') = ''
+                   AND json_extract(description, '$.stack') = ''
+                   AND json_extract(description, '$.avantages') = ''
+              )
+              OR (
+                   portal = 'apec'
+                   AND json_valid(description)
+                   AND json_extract(description, '$.stack') = ''
+              )
+           ORDER BY id"""
     ).fetchall()
     logger.info("%d offers to backfill", len(rows))
 
     updated = 0
     skipped = 0
+    extractor_cache = {url: get_extractor(url) for _, url, _, _ in rows}
     browser_needed = any(
-        (e := get_extractor(url)) is not None and e.needs_browser for _, url in rows
+        e is not None and e.needs_browser for e in extractor_cache.values()
     )
 
     async with httpx.AsyncClient(headers=_HEADERS) as http_client:
@@ -289,8 +342,46 @@ async def main() -> None:
         page = await browser_context.new_page() if browser_context else None
 
         try:
-            for offer_id, url in rows:
-                extractor = get_extractor(url)
+            for offer_id, url, portal, existing_desc in rows:
+                # Infer and persist portal for legacy empty-portal rows
+                inferred = infer_portal_from_url(url) if not portal else portal
+                if inferred != portal:
+                    conn.execute(
+                        "UPDATE applications SET portal=? WHERE id=?",
+                        (inferred, offer_id),
+                    )
+                    portal = inferred
+
+                def _save_parsed(desc: str) -> None:
+                    nonlocal updated
+                    # ApecApiExtractor returns a pre-built ParsedDescription JSON —
+                    # store it directly without re-parsing.
+                    if _is_valid_json(desc):
+                        dj = desc
+                    else:
+                        dj = parse_description(desc, portal).to_json()
+                    conn.execute(
+                        "UPDATE applications SET description=? WHERE id=?",
+                        (dj, offer_id),
+                    )
+                    updated += 1
+                    logger.info("  -> %d chars saved as JSON", len(dj))
+
+                # If we already have a long plain-text description, re-parse it
+                # directly without hitting the network (handles expired APEC offers).
+                if (
+                    not _is_valid_json(existing_desc)
+                    and len(existing_desc) >= MIN_DESC_LENGTH
+                ):
+                    logger.info(
+                        "[%d] re-parsing existing plain text (%d chars)",
+                        offer_id,
+                        len(existing_desc),
+                    )
+                    _save_parsed(existing_desc)
+                    continue
+
+                extractor = extractor_cache[url]
                 if extractor is None:
                     logger.warning("[%d] No extractor for: %s", offer_id, url[:80])
                     skipped += 1
@@ -310,13 +401,7 @@ async def main() -> None:
                     desc = ""
 
                 if len(desc) >= MIN_DESC_LENGTH:
-                    conn.execute(
-                        "UPDATE applications SET description=? WHERE id=?",
-                        (desc, offer_id),
-                    )
-                    conn.commit()
-                    updated += 1
-                    logger.info("  -> %d chars saved", len(desc))
+                    _save_parsed(desc)
                 else:
                     logger.info(
                         "  -> too short or empty (%d chars), skipping", len(desc)
@@ -327,6 +412,7 @@ async def main() -> None:
             if pw_ctx and pw:
                 await pw_ctx.__aexit__(None, None, None)
 
+    conn.commit()
     conn.close()
     logger.info(
         "Done: %d/%d updated | %d skipped (no extractor)",

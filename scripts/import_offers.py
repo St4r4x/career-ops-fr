@@ -14,7 +14,10 @@ import sqlite3
 from datetime import date
 from pathlib import Path
 
-from scripts.dedup import deduplicate
+from urllib.parse import urlparse
+
+from scripts.dedup import deduplicate, normalize_offer_url
+from scripts.description_parser import parse_description
 from scripts.liveness import check_liveness
 from scripts.models import RawOffer
 from scripts.pre_filter import load_settings, pre_filter
@@ -24,6 +27,24 @@ from scripts.scan_portals import list_portal_ids, run_scan
 logger = logging.getLogger(__name__)
 
 _DEFAULT_DB = Path(__file__).parent.parent / "dashboard" / "data" / "applications.db"
+
+_HOSTNAME_TO_PORTAL: dict[str, str] = {
+    "www.apec.fr": "apec",
+    "apec.fr": "apec",
+    "jobs.lever.co": "lever",
+    "api.lever.co": "lever",
+    "job-boards.greenhouse.io": "greenhouse",
+    "boards-api.greenhouse.io": "greenhouse",
+    "jobs.ashbyhq.com": "ashby",
+}
+
+
+def infer_portal_from_url(url: str) -> str:
+    if not url:
+        return ""
+    host = urlparse(url).hostname or ""
+    return _HOSTNAME_TO_PORTAL.get(host, "")
+
 
 _CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS applications (
@@ -41,7 +62,8 @@ CREATE TABLE IF NOT EXISTS applications (
     cv_path            TEXT    NOT NULL DEFAULT '',
     cover_letter_path  TEXT    NOT NULL DEFAULT '',
     follow_up_date     TEXT,
-    description        TEXT    NOT NULL DEFAULT ''
+    description        TEXT    NOT NULL DEFAULT '',
+    portal             TEXT    NOT NULL DEFAULT ''
 )
 """
 
@@ -60,20 +82,24 @@ def score_to_grade(score: float) -> str:
 
 def existing_urls(conn: sqlite3.Connection) -> set[str]:
     rows = conn.execute(
-        "SELECT offer_url FROM applications WHERE offer_url != ''"
+        "SELECT offer_url, portal FROM applications WHERE offer_url != ''"
     ).fetchall()
-    return {row[0] for row in rows}
+    return {normalize_offer_url(row[0], row[1]) for row in rows}
 
 
 def insert_offer(conn: sqlite3.Connection, offer: RawOffer) -> None:
     detection = (
         offer.date_posted.isoformat() if offer.date_posted else date.today().isoformat()
     )
+    portal = offer.portal or infer_portal_from_url(offer.url or "")
+    parsed = offer.parsed_description or parse_description(offer.description, portal)
+    description_json = parsed.to_json()
     conn.execute(
         """INSERT INTO applications
            (company, role, offer_url, detection_date, score_grade, score_value,
-            status, send_date, contacts, notes, cv_path, cover_letter_path, follow_up_date, description)
-           VALUES (?, ?, ?, ?, ?, ?, ?, NULL, '', '', '', '', NULL, ?)""",
+            status, send_date, contacts, notes, cv_path, cover_letter_path,
+            follow_up_date, description, portal)
+           VALUES (?, ?, ?, ?, ?, ?, ?, NULL, '', '', '', '', NULL, ?, ?)""",
         (
             offer.company,
             offer.title,
@@ -82,7 +108,8 @@ def insert_offer(conn: sqlite3.Connection, offer: RawOffer) -> None:
             score_to_grade(offer.score),
             offer.score,
             "À envoyer",
-            offer.description,
+            description_json,
+            portal,
         ),
     )
 
@@ -97,18 +124,22 @@ def import_offers(offers: list[RawOffer], db_path: Path) -> tuple[int, int]:
         inserted = 0
         skipped = 0
         for offer in offers:
-            if offer.url and offer.url in urls:
+            canonical = normalize_offer_url(offer.url or "", offer.portal)
+            if canonical and canonical in urls:
                 if offer.description:
+                    description_json = parse_description(
+                        offer.description, offer.portal
+                    ).to_json()
                     conn.execute(
                         "UPDATE applications SET description = ? WHERE offer_url = ? AND description = ''",
-                        (offer.description, offer.url),
+                        (description_json, offer.url),
                     )
                 skipped += 1
                 logger.debug("Skip (exists): %s @ %s", offer.title, offer.company)
             else:
                 insert_offer(conn, offer)
-                if offer.url:
-                    urls.add(offer.url)
+                if canonical:
+                    urls.add(canonical)
                 inserted += 1
         conn.commit()
     finally:
@@ -132,7 +163,8 @@ def import_offers_with_liveness(
         skipped = 0
         expired_count = 0
         for offer in offers:
-            if offer.url and offer.url in urls:
+            canonical = normalize_offer_url(offer.url or "", offer.portal)
+            if canonical and canonical in urls:
                 skipped += 1
                 continue
             if offer.url:
@@ -144,8 +176,8 @@ def import_offers_with_liveness(
                     expired_count += 1
                     continue
             insert_offer(_conn, offer)
-            if offer.url:
-                urls.add(offer.url)
+            if canonical:
+                urls.add(canonical)
             inserted += 1
         _conn.commit()
     finally:

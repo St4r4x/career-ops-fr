@@ -37,6 +37,26 @@ GRADE_COLORS: dict[str, str] = {
 }
 
 
+def _parse_description(raw: str) -> dict:
+    """Return parsed description dict from JSON, or legacy text in mission field."""
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+        if isinstance(data, dict):
+            return data
+    except json.JSONDecodeError:
+        pass
+    return {
+        "mission": raw,
+        "profil": "",
+        "stack": "",
+        "avantages": "",
+        "contrat": "",
+        "salaire": "",
+    }
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.db = open_db(DB_PATH)
@@ -86,9 +106,19 @@ async def offer_list(
     status: str = Query(""),
     grade: str = Query(""),
     q: str = Query(""),
+    sal_min: str = Query(""),
 ):
     db = request.app.state.db
-    filters = {k: v for k, v in {"status": status, "grade": grade, "q": q}.items() if v}
+    filters = {
+        k: v
+        for k, v in {
+            "status": status,
+            "grade": grade,
+            "q": q,
+            "sal_min": sal_min,
+        }.items()
+        if v
+    }
     offers = db.get_all(filters)
     return templates.TemplateResponse(
         request,
@@ -127,6 +157,7 @@ async def offer_detail(request: Request, offer_id: int):
         {
             "offer": offer,
             "statuses": VALID_STATUSES,
+            "parsed_desc": _parse_description(offer.get("description", "")),
         },
     )
 
@@ -178,6 +209,7 @@ async def offer_save(
         {
             "offer": offer,
             "statuses": VALID_STATUSES,
+            "parsed_desc": _parse_description(offer.get("description", "")),
         },
     )
 
@@ -220,6 +252,7 @@ async def offer_status(request: Request, offer_id: int, status: str = Form(...))
         {
             "offer": offer,
             "statuses": VALID_STATUSES,
+            "parsed_desc": _parse_description(offer.get("description", "")),
         },
     )
 

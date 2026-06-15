@@ -10,6 +10,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## 2026-06-15
 
 ### Added
+- `dashboard/db.py` — `_migrate()`: adds `portal TEXT NOT NULL DEFAULT ''` column to `applications` table idempotently
+- `dashboard/db.py` — `_SELECT`: includes `portal` in all SELECT queries
+- `dashboard/db.py` — `DB.update()`: `portal` added to the allowed-fields set
+- `tests/test_dashboard_db.py` — `test_portal_column_created_by_migration`: verifies `_migrate` adds the `portal` column on a table that lacks it
+
+### Added
 - `scripts/description_parser.py` — `parse_description(raw, portal)`: dispatches to a portal-specific parser (APEC plain-text, HTML-heading for Lever/Greenhouse/Ashby, heuristic regex for Indeed/WTTJ/LinkedIn/Glassdoor) and returns a `ParsedDescription` with mission/profil/stack/avantages fields populated
 - `tests/test_description_parser.py` — 17 new parser tests covering generic fallback, APEC, HTML-heading, and heuristic parsers across all supported portals
 

@@ -24,12 +24,13 @@ CREATE TABLE IF NOT EXISTS applications (
 
 @pytest.fixture
 def client():
-    from db import DB
+    from db import DB, _migrate
     import app as dashboard_app
 
     conn = sqlite3.connect(":memory:", check_same_thread=False)
     conn.execute(CREATE_SQL)
     conn.commit()
+    _migrate(conn)
     test_db = DB(conn)
     dashboard_app.app.state.db = test_db
     dashboard_app.app.state.scan_status = "idle"

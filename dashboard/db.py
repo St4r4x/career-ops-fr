@@ -25,7 +25,7 @@ _FOLLOW_UP_DAYS = 7
 _SELECT = """
 SELECT id, company, role, offer_url, detection_date, score_grade, score_value,
        status, send_date, contacts, notes, cv_path, cover_letter_path,
-       follow_up_date, description
+       follow_up_date, description, portal
 FROM applications
 """
 
@@ -77,6 +77,7 @@ class DB:
             "cover_letter_path",
             "follow_up_date",
             "description",
+            "portal",
         }
         updates = {k: v for k, v in fields.items() if k in allowed}
         if not updates:
@@ -135,6 +136,11 @@ def _migrate(conn: sqlite3.Connection) -> None:
     if "description" not in existing:
         conn.execute(
             "ALTER TABLE applications ADD COLUMN description TEXT NOT NULL DEFAULT ''"
+        )
+        conn.commit()
+    if "portal" not in existing:
+        conn.execute(
+            "ALTER TABLE applications ADD COLUMN portal TEXT NOT NULL DEFAULT ''"
         )
         conn.commit()
 

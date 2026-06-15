@@ -4,8 +4,13 @@ from __future__ import annotations
 
 import pytest
 
-from scripts.models import RawOffer
-from scripts.pre_filter import _is_location_compatible, pre_filter, score_offer
+from scripts.models import ParsedDescription, RawOffer
+from scripts.pre_filter import (
+    _desc_blob,
+    _is_location_compatible,
+    pre_filter,
+    score_offer,
+)
 
 
 MOCK_SETTINGS = {
@@ -485,3 +490,61 @@ class TestPreFilterLocationGate:
         ]
         result = pre_filter(offers, settings_no_loc)
         assert len(result) == 2
+
+
+class TestDescBlob:
+    def test_uses_parsed_description_when_set(self) -> None:
+        pd = ParsedDescription(
+            mission="ML pipelines", stack="Python Docker", profil="3 ans exp"
+        )
+        offer = RawOffer(
+            title="AI Engineer",
+            company="X",
+            url="u",
+            portal="lever",
+            parsed_description=pd,
+        )
+        blob = _desc_blob(offer)
+        assert "ML pipelines" in blob
+        assert "Python Docker" in blob
+        assert "3 ans exp" in blob
+
+    def test_falls_back_to_description_when_no_parsed(self) -> None:
+        offer = RawOffer(
+            title="AI Engineer",
+            company="X",
+            url="u",
+            portal="lever",
+            description="raw text here",
+        )
+        blob = _desc_blob(offer)
+        assert blob == "raw text here"
+
+    def test_empty_fields_excluded_from_blob(self) -> None:
+        pd = ParsedDescription(mission="only mission")
+        offer = RawOffer(
+            title="AI Engineer",
+            company="X",
+            url="u",
+            portal="lever",
+            parsed_description=pd,
+        )
+        blob = _desc_blob(offer)
+        assert blob == "only mission"
+
+    def test_scoring_via_parsed_description_matches_blob_path(self) -> None:
+        desc = "python pytorch mlops docker CDI 45k€ " + ("lorem ipsum " * 30)
+        offer_blob = RawOffer(
+            title="AI Engineer", company="X", url="u", portal="lever", description=desc
+        )
+        pd = ParsedDescription(mission=desc)
+        offer_parsed = RawOffer(
+            title="AI Engineer",
+            company="X",
+            url="u",
+            portal="lever",
+            parsed_description=pd,
+        )
+        score_blob, _ = score_offer(offer_blob, MOCK_SETTINGS)
+        score_parsed, _ = score_offer(offer_parsed, MOCK_SETTINGS)
+        assert score_blob == pytest.approx(score_parsed, abs=0.01)

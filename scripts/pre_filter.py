@@ -118,6 +118,19 @@ _MEAL_TICKET_VALUE_PER_DAY = 9.0  # average meal ticket face value (€/day)
 _INTERESSEMENT_RATE = 0.05  # assumed intéressement/participation rate (5%)
 
 
+def _desc_blob(offer: RawOffer) -> str:
+    """Return a flat text string for regex scoring, from parsed or raw description."""
+    if offer.parsed_description is not None:
+        pd = offer.parsed_description
+        return " ".join(
+            filter(
+                None,
+                [pd.mission, pd.profil, pd.stack, pd.avantages, pd.contrat, pd.salaire],
+            )
+        )
+    return offer.description or ""
+
+
 def load_settings(path: Path = _SETTINGS_PATH) -> dict:
     """Load and return the parsed settings.yaml."""
     with path.open("r", encoding="utf-8") as fh:
@@ -224,7 +237,7 @@ def score_offer(offer: RawOffer, settings: dict) -> tuple[float, list[str]]:
     title_lower = offer.title.lower()
     company_norm = _normalize_company(offer.company)
     location_lower = (offer.location or "").lower()
-    desc_lower = (offer.description or "").lower()
+    desc_lower = _desc_blob(offer).lower()
 
     search_cfg = settings.get("search", {})
     scoring_cfg = settings.get("scoring", {})
@@ -268,14 +281,12 @@ def score_offer(offer: RawOffer, settings: dict) -> tuple[float, list[str]]:
                 score += 0.5
                 tags.append(f"exp:{exp_years}ans")
 
-    if desc_lower and _CDI_RE.search(offer.description or ""):
+    if desc_lower and _CDI_RE.search(_desc_blob(offer)):
         score += 0.3
         tags.append("contract:CDI")
 
     if desc_lower:
-        sal_delta, sal_tag = _score_salary(
-            offer.description or "", desc_lower, scoring_cfg
-        )
+        sal_delta, sal_tag = _score_salary(_desc_blob(offer), desc_lower, scoring_cfg)
         if sal_delta != 0.0:
             score += sal_delta
             if sal_tag:
@@ -286,12 +297,12 @@ def score_offer(offer: RawOffer, settings: dict) -> tuple[float, list[str]]:
         tags.append(f"portal:{offer.portal}")
 
     if desc_lower:
-        leg_delta, leg_tags = _score_legitimacy(offer.description or "", desc_lower)
+        leg_delta, leg_tags = _score_legitimacy(_desc_blob(offer), desc_lower)
         if leg_delta != 0.0:
             score += leg_delta
             tags.extend(leg_tags)
 
-    if desc_lower and _CV_EN_RE.search(offer.description or ""):
+    if desc_lower and _CV_EN_RE.search(_desc_blob(offer)):
         tags.append("lang:cv_en_required")
 
     return min(score, 5.0), tags

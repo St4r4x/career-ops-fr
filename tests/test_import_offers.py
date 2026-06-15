@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS applications (
     cv_path            TEXT    NOT NULL DEFAULT '',
     cover_letter_path  TEXT    NOT NULL DEFAULT '',
     follow_up_date     TEXT,
-    description        TEXT    NOT NULL DEFAULT ''
+    description        TEXT    NOT NULL DEFAULT '',
+    portal             TEXT    NOT NULL DEFAULT ''
 )
 """
 
@@ -123,6 +124,8 @@ class TestInsertOffer:
         assert row[0] == date.today().isoformat()
 
     def test_inserts_description(self) -> None:
+        import json
+
         conn = _make_conn()
         offer = RawOffer(
             title="AI Engineer",
@@ -133,14 +136,73 @@ class TestInsertOffer:
         )
         insert_offer(conn, offer)
         row = conn.execute("SELECT description FROM applications").fetchone()
-        assert row[0] == "We are looking for an AI Engineer with 3+ years experience."
+        data = json.loads(row[0])
+        assert isinstance(data, dict)
+        assert "mission" in data
 
     def test_inserts_empty_description_by_default(self) -> None:
+        import json
+
         conn = _make_conn()
         offer = RawOffer(title="Dev", company="Co", url="https://x.com/1", portal="p")
         insert_offer(conn, offer)
         row = conn.execute("SELECT description FROM applications").fetchone()
-        assert row[0] == ""
+        data = json.loads(row[0])
+        assert isinstance(data, dict)
+        assert data["mission"] == ""
+
+    def test_description_is_valid_json(self) -> None:
+        import json
+
+        conn = _make_conn()
+        offer = RawOffer(
+            title="AI Engineer",
+            company="Mistral AI",
+            url="https://wttj.co/jobs/999",
+            portal="wttj",
+            description="Missions : Développer des modèles ML. Profil : Python 3 ans.",
+        )
+        insert_offer(conn, offer)
+        row = conn.execute("SELECT description FROM applications").fetchone()
+        data = json.loads(row[0])
+        assert "mission" in data
+        assert "profil" in data
+        assert "stack" in data
+        assert "avantages" in data
+        assert "contrat" in data
+        assert "salaire" in data
+
+    def test_portal_column_populated(self) -> None:
+        conn = _make_conn()
+        offer = RawOffer(
+            title="AI Engineer",
+            company="Mistral AI",
+            url="https://wttj.co/jobs/999",
+            portal="wttj",
+        )
+        insert_offer(conn, offer)
+        row = conn.execute("SELECT portal FROM applications").fetchone()
+        assert row[0] == "wttj"
+
+    def test_prepopulated_parsed_description_used_directly(self) -> None:
+        import json
+
+        from scripts.models import ParsedDescription
+
+        conn = _make_conn()
+        pd = ParsedDescription(mission="custom mission", stack="PyTorch")
+        offer = RawOffer(
+            title="AI Engineer",
+            company="Mistral AI",
+            url="https://wttj.co/jobs/999",
+            portal="wttj",
+            parsed_description=pd,
+        )
+        insert_offer(conn, offer)
+        row = conn.execute("SELECT description FROM applications").fetchone()
+        data = json.loads(row[0])
+        assert data["mission"] == "custom mission"
+        assert data["stack"] == "PyTorch"
 
 
 class TestImportOffers:

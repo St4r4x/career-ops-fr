@@ -114,9 +114,9 @@ def _parse_apec(raw: str) -> ParsedDescription:
         end = cut_points[i + 1] if i + 1 < len(cut_points) else len(raw)
         chunk = raw[start:end].strip()
         m = markers[start]
-        if _APEC_PROFIL_RE.search(m.group(0)):
+        if m is profil_m:
             pd.profil = chunk
-        elif _APEC_AVANTAGES_RE.search(m.group(0)):
+        elif m is avantages_m:
             pd.avantages = chunk
         # _APEC_OTHER_RE chunks (company blurbs, etc.) are intentionally discarded.
 
@@ -207,7 +207,7 @@ def _parse_generic(raw: str) -> ParsedDescription:
 # ---------------------------------------------------------------------------
 
 _HTML_PORTALS = frozenset({"lever", "greenhouse", "ashby"})
-_HEURISTIC_PORTALS = frozenset({"indeed", "wtfj", "linkedin", "glassdoor"})
+_HEURISTIC_PORTALS = frozenset({"indeed", "wttj", "linkedin", "glassdoor"})
 
 
 def parse_description(raw: str, portal: str) -> ParsedDescription:

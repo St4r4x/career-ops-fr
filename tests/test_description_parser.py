@@ -151,8 +151,8 @@ def test_indeed_avantages_extracted() -> None:
     assert "RTT" in pd.avantages
 
 
-def test_wtfj_same_as_indeed() -> None:
-    pd = parse_description(_HEURISTIC_DESC, "wtfj")
+def test_wttj_same_as_indeed() -> None:
+    pd = parse_description(_HEURISTIC_DESC, "wttj")
     assert "Développer" in pd.mission
 
 

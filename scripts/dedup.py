@@ -22,20 +22,24 @@ from scripts.models import RawOffer
 
 # Portals whose offer identity lives entirely in the URL path; query params
 # (page index, search context, etc.) are irrelevant for deduplication.
+# Portals whose offer identity lives entirely in the URL path.
+# Matched against the portal field OR the URL hostname.
 _PATH_ONLY_PORTALS = frozenset({"apec"})
+_PATH_ONLY_HOSTNAMES = frozenset({"www.apec.fr", "apec.fr"})
 
 
 def normalize_offer_url(url: str, portal: str = "") -> str:
     """Return a canonical URL for deduplication.
 
-    For APEC (and similar portals) the offer ID is embedded in the path, so
-    query-string parameters only reflect the search context and must be dropped.
-    All other portals keep their URLs unchanged.
+    For APEC the offer ID is in the path; query-string params (page index,
+    selectedIndex…) are search context and must be dropped.  Detection is
+    done on both the portal field and the URL hostname so that older rows
+    with an empty portal column are handled correctly.
     """
     if not url:
         return url
-    if portal.lower() in _PATH_ONLY_PORTALS:
-        parsed = urlparse(url)
+    parsed = urlparse(url)
+    if portal.lower() in _PATH_ONLY_PORTALS or parsed.hostname in _PATH_ONLY_HOSTNAMES:
         return urlunparse(parsed._replace(query="", fragment=""))
     return url
 

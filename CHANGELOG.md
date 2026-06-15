@@ -10,11 +10,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## 2026-06-15
 
 ### Fixed
-- `scripts/dedup.py` — added `normalize_offer_url()`: strips query params for APEC URLs (offer ID is in path, `page=` / `selectedIndex=` are search context and caused duplicate inserts across scans)
+- `scripts/dedup.py` — added `normalize_offer_url()`: strips query params for APEC URLs (offer ID is in path, `page=` / `selectedIndex=` are search context and caused duplicate inserts across scans); detection uses both portal field and URL hostname so legacy rows with empty portal are covered
 - `scripts/import_offers.py` — `existing_urls()` and both import loops now use `normalize_offer_url()` so APEC offers with different query strings are correctly recognised as duplicates
 
 ### Changed
-- DB cleanup: removed 22 duplicate APEC entries from `applications` where the same offer URL (different query params) had been inserted multiple times; protected rows with status Envoyée/Refusée were untouched
+- DB cleanup: removed 477 duplicate entries (455 + 22 earlier) from `applications` (886 → 431); protected rows with status Envoyée/Refusée were untouched
 
 ### Added
 - `scripts/description_parser.py` — new module with public `parse_description(raw, portal) -> ParsedDescription`; dispatches to portal-specific heuristic parsers: APEC (French section-marker regex), Lever/Greenhouse/Ashby (HTML `<h2>`–`<h4>` headings), Indeed/WTTJ/LinkedIn/Glassdoor (keyword-line heuristics), generic fallback (everything → mission)

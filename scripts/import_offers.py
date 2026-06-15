@@ -9,8 +9,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import dataclasses
-import json
 import logging
 import sqlite3
 from datetime import date
@@ -73,11 +71,10 @@ def insert_offer(conn: sqlite3.Connection, offer: RawOffer) -> None:
     detection = (
         offer.date_posted.isoformat() if offer.date_posted else date.today().isoformat()
     )
-    if offer.parsed_description is not None:
-        parsed = offer.parsed_description
-    else:
-        parsed = parse_description(offer.description, offer.portal)
-    description_json = json.dumps(dataclasses.asdict(parsed), ensure_ascii=False)
+    parsed = offer.parsed_description or parse_description(
+        offer.description, offer.portal
+    )
+    description_json = parsed.to_json()
     conn.execute(
         """INSERT INTO applications
            (company, role, offer_url, detection_date, score_grade, score_value,
@@ -110,10 +107,9 @@ def import_offers(offers: list[RawOffer], db_path: Path) -> tuple[int, int]:
         for offer in offers:
             if offer.url and offer.url in urls:
                 if offer.description:
-                    parsed = parse_description(offer.description, offer.portal)
-                    description_json = json.dumps(
-                        dataclasses.asdict(parsed), ensure_ascii=False
-                    )
+                    description_json = parse_description(
+                        offer.description, offer.portal
+                    ).to_json()
                     conn.execute(
                         "UPDATE applications SET description = ? WHERE offer_url = ? AND description = ''",
                         (description_json, offer.url),

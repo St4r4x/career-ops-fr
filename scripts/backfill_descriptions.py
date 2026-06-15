@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import dataclasses
 import json
 import logging
 import re
@@ -313,15 +312,11 @@ async def main() -> None:
                     desc = ""
 
                 if len(desc) >= MIN_DESC_LENGTH:
-                    parsed = parse_description(desc, portal)
-                    description_json = json.dumps(
-                        dataclasses.asdict(parsed), ensure_ascii=False
-                    )
+                    description_json = parse_description(desc, portal).to_json()
                     conn.execute(
                         "UPDATE applications SET description=? WHERE id=?",
                         (description_json, offer_id),
                     )
-                    conn.commit()
                     updated += 1
                     logger.info("  -> %d chars saved as JSON", len(description_json))
                 else:
@@ -334,6 +329,7 @@ async def main() -> None:
             if pw_ctx and pw:
                 await pw_ctx.__aexit__(None, None, None)
 
+    conn.commit()
     conn.close()
     logger.info(
         "Done: %d/%d updated | %d skipped (no extractor)",

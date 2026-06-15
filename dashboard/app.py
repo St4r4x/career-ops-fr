@@ -37,17 +37,24 @@ GRADE_COLORS: dict[str, str] = {
 }
 
 
-def _parse_description(raw: str) -> dict | str:
-    """Return parsed description dict if JSON, otherwise the raw string."""
+def _parse_description(raw: str) -> dict:
+    """Return parsed description dict from JSON, or legacy text in mission field."""
     if not raw:
         return {}
     try:
         data = json.loads(raw)
         if isinstance(data, dict):
             return data
-        return raw
-    except (json.JSONDecodeError, ValueError):
-        return raw
+    except json.JSONDecodeError:
+        pass
+    return {
+        "mission": raw,
+        "profil": "",
+        "stack": "",
+        "avantages": "",
+        "contrat": "",
+        "salaire": "",
+    }
 
 
 @asynccontextmanager

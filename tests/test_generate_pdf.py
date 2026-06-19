@@ -2,8 +2,8 @@
 from scripts.generate_pdf import _normalize_for_ats, build_cv_context, render_html
 
 
-def test_build_cv_context_returns_required_keys():
-    ctx = build_cv_context(
+def _base_ctx(**overrides) -> dict:
+    defaults = dict(
         name="Your Name",
         title="AI/ML Engineer",
         email="test@test.com",
@@ -11,33 +11,91 @@ def test_build_cv_context_returns_required_keys():
         location="Paris",
         summary="Test summary.",
         experience=[],
-        skills=["Python", "Docker"],
+        skill_categories={"Langages": ["Python", "Docker"]},
         highlighted_skills=["Python"],
         education=[],
         languages=["Français", "English"],
     )
+    defaults.update(overrides)
+    return build_cv_context(**defaults)
+
+
+def test_build_cv_context_returns_required_keys():
+    ctx = _base_ctx()
     assert ctx["name"] == "Your Name"
-    assert "Python" in ctx["skills"]
+    assert ctx["skill_categories"] == {"Langages": ["Python", "Docker"]}
     assert "Python" in ctx["highlighted_skills"]
 
 
+def test_build_cv_context_certifications_default_none():
+    ctx = _base_ctx()
+    assert ctx["certifications"] is None
+
+
+def test_build_cv_context_certifications_present():
+    certs = [{"name": "AWS Dev", "issuer": "Amazon", "year": 2024}]
+    ctx = _base_ctx(certifications=certs)
+    assert ctx["certifications"] == certs
+
+
 def test_render_html_contains_name():
-    ctx = build_cv_context(
-        name="Your Name",
-        title="AI/ML Engineer",
-        email="test@test.com",
-        phone="0600000000",
-        location="Paris",
-        summary="",
-        experience=[],
-        skills=["Python"],
-        highlighted_skills=[],
-        education=[],
-        languages=[],
-    )
+    ctx = _base_ctx(name="Your Name", title="AI/ML Engineer", summary="")
     html = render_html(ctx)
     assert "Your Name" in html
     assert "AI/ML Engineer" in html
+
+
+def test_render_html_skills_by_category():
+    ctx = _base_ctx(
+        skill_categories={"IA/ML": ["PyTorch"], "Langages": ["Python"]},
+        highlighted_skills=["PyTorch"],
+    )
+    html = render_html(ctx)
+    assert "PyTorch" in html
+    assert "Python" in html
+    assert "IA/ML" in html
+
+
+def test_render_html_certifications_shown():
+    certs = [{"name": "AWS Dev", "issuer": "Amazon", "year": 2024}]
+    ctx = _base_ctx(certifications=certs)
+    html = render_html(ctx)
+    assert "AWS Dev" in html
+    assert "Amazon" in html
+
+
+def test_render_html_certifications_absent():
+    ctx = _base_ctx(certifications=None)
+    html = render_html(ctx)
+    assert "Certifications" not in html
+
+
+def test_render_html_stack_tags_shown():
+    job = {
+        "title": "AI Engineer",
+        "company": "Acme",
+        "type": "CDI",
+        "period": "2024",
+        "bullets": ["Did stuff"],
+        "stack": ["Python", "FastAPI"],
+    }
+    ctx = _base_ctx(experience=[job])
+    html = render_html(ctx)
+    assert "FastAPI" in html
+
+
+def test_render_html_stack_absent():
+    job = {
+        "title": "AI Engineer",
+        "company": "Acme",
+        "type": "CDI",
+        "period": "2024",
+        "bullets": ["Did stuff"],
+    }
+    ctx = _base_ctx(experience=[job])
+    html = render_html(ctx)
+    # no stack field → no stack-tag div
+    assert "stack-tag" not in html
 
 
 class TestNormalizeForAts:

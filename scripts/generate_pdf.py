@@ -75,13 +75,14 @@ def build_cv_context(
     location: str,
     summary: str,
     experience: list[dict],
-    skills: list[str],
+    skill_categories: dict[str, list[str]],
     highlighted_skills: list[str],
     education: list[dict],
     languages: list[str],
     linkedin: str = "",
     github: str = "",
     hobbies: list[str] | None = None,
+    certifications: list[dict] | None = None,
 ) -> dict:
     return {
         "name": name,
@@ -93,11 +94,12 @@ def build_cv_context(
         "github": github,
         "summary": summary,
         "experience": experience,
-        "skills": skills,
+        "skill_categories": skill_categories,
         "highlighted_skills": highlighted_skills,
         "education": education,
         "languages": languages,
         "hobbies": hobbies or [],
+        "certifications": certifications,
     }
 
 
@@ -141,11 +143,12 @@ def default_context(lang: str = "fr") -> dict:
         github=c.get("github", ""),
         summary=cv.get("summary", ""),
         experience=cv.get("experience", []),
-        skills=cv.get("skills", []),
+        skill_categories=cv.get("skill_categories", {}),
         highlighted_skills=[],
         education=cv.get("education", []),
         languages=cv.get("languages", []),
         hobbies=cv.get("hobbies", []),
+        certifications=cv.get("certifications", None),
     )
 
 

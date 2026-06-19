@@ -7,6 +7,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+- `scripts/generate_pdf.py` — `build_cv_context()` now accepts `skill_categories: dict[str, list[str]]` (replacing `skills: list[str]`) and optional `certifications: list[dict] | None`; context dict keys now include `skill_categories` and `certifications`
+- `scripts/generate_pdf.py` — `default_context()` reads `skill_categories` and `certifications` from cv.yaml config
+- `tests/test_generate_pdf.py` — updated all tests to use `skill_categories` instead of `skills`; added 2 new tests for certifications handling (default None, and when present)
+
 ## 2026-06-15 (3)
 
 ### Added

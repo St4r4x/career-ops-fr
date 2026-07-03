@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="p-8 max-w-2xl mx-auto overflow-y-auto h-full">
+<div class="overflow-y-auto h-full">
+<div class="p-8 max-w-2xl mx-auto">
   <h1 class="text-2xl font-bold mb-8" style="color:#f1f5f9;">Statistiques</h1>
 
   <div class="grid grid-cols-2 gap-4 mb-8">
@@ -100,5 +101,6 @@
     <p class="text-sm" style="color:#64748b;">Aucun rapport disponible — lancez un scan pour en générer un.</p>
     {% endif %}
   </div>
+</div>
 </div>
 {% endblock %}

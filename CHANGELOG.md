@@ -7,6 +7,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Removed
+- `GET /cover-letters` route, `cover_letters.html` template, and "Lettres" nav link — feature dropped as not useful
+
 ### Changed
 - `dashboard/app.py` — `_build_funnel()` now returns `max_count` as third value; exits dicts no longer carry dead `"rate": None` key
 - `dashboard/app.py` — `GET /stats` uses `max()` instead of `sorted()[0]` to pick latest report file; passes `max_count` to template

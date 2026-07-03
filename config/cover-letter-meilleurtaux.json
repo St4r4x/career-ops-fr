@@ -1,0 +1,14 @@
+{
+  "company": "Meilleurtaux",
+  "role": "Data Scientist confirmé / AI Engineer",
+  "lang": "fr",
+  "recipient": "Madame, Monsieur,",
+  "subject": "Candidature au poste de Data Scientist confirmé / AI Engineer — Meilleurtaux, Paris",
+  "paragraphs": [
+    "J'ai passé 8 ans à manager une équipe chez Fnac avant de me reconvertir dans l'IA. C'était un choix délibéré. Cette expérience m'a appris à raisonner en termes d'impact concret, pas de performance académique. Quand je construis un système, je pense d'abord à ce qu'il doit faire fonctionner en conditions réelles, pas à ce qui fera un beau notebook.",
+    "Depuis 3 ans je suis en alternance chez Missia. J'y ai construit des services FastAPI d'inférence LLM en production, des pipelines RAG et d'embeddings, du fine-tuning sur SageMaker Spot, et le MLOps qui va avec : MLflow, Docker, CI/CD GitHub Actions. J'ai aussi développé career-ops-fr, un outil de veille offres IA avec scraping, scoring LLM et dashboard FastAPI, que j'utilise tous les jours. En octobre je quitte l'entreprise.",
+    "Votre offre correspond bien à ce que je cherche : des sujets variés, du scoring, du traitement documentaire, des LLMs, dans un contexte où ce qui compte c'est que ça tourne en production. Avant Missia, j'ai livré un moteur de recherche sémantique en production chez GoodBarber en 3 mois. Je pratique les technologies MCP au quotidien, qui font partie de votre stack.",
+    "Je suis disponible dès octobre 2026. Je serais content d'en discuter si mon profil correspond."
+  ],
+  "closing_line": "Cordialement,"
+}

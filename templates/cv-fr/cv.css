@@ -1,40 +1,40 @@
 /* Print-optimized, ATS-friendly — no tables, no floats, 1 page A4 */
 @page {
   size: A4;
-  margin: 12mm 14mm;
+  margin: 8mm 12mm;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
   font-family: 'Arial', sans-serif;
-  font-size: 10pt;
+  font-size: 9.5pt;
   color: #222;
-  line-height: 1.4;
+  line-height: 1.25;
 }
 
-h1 { font-size: 18pt; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
-h2 { font-size: 9pt; font-weight: 400; letter-spacing: 3px; text-transform: uppercase;
-     color: #555; margin-bottom: 6px; }
-h3 { font-size: 10pt; font-weight: 700; margin-top: 8px; }
+h1 { font-size: 16pt; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+h2 { font-size: 8.5pt; font-weight: 400; letter-spacing: 3px; text-transform: uppercase;
+     color: #555; margin-bottom: 4px; }
+h3 { font-size: 9.5pt; font-weight: 700; margin-top: 4px; }
 
-.header { border-bottom: 2px solid #222; padding-bottom: 8px; margin-bottom: 10px; }
-.header .title { font-size: 11pt; letter-spacing: 4px; text-transform: uppercase; color: #444; }
-.contact { font-size: 9pt; color: #555; margin-top: 4px; }
+.header { border-bottom: 2px solid #222; padding-bottom: 5px; margin-bottom: 7px; }
+.header .title { font-size: 10pt; letter-spacing: 4px; text-transform: uppercase; color: #444; }
+.contact { font-size: 8.5pt; color: #555; margin-top: 3px; }
 
-.section { margin-bottom: 10px; }
+.section { margin-bottom: 11px; }
 .section-title {
-  font-size: 9pt; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
-  border-bottom: 1px solid #bbb; padding-bottom: 2px; margin-bottom: 6px;
+  font-size: 8.5pt; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+  border-bottom: 1px solid #bbb; padding-bottom: 2px; margin-bottom: 4px;
 }
 
-.job { margin-bottom: 6px; }
+.job { margin-bottom: 4px; }
 .job-header { display: flex; justify-content: space-between; align-items: baseline; }
-.job-company { font-size: 9pt; color: #555; }
-.job-date { font-size: 9pt; color: #777; }
+.job-company { font-size: 8.5pt; color: #555; }
+.job-date { font-size: 8.5pt; color: #777; }
 
-ul { padding-left: 14px; }
-li { margin-bottom: 2px; font-size: 9.5pt; }
+ul { padding-left: 13px; }
+li { margin-bottom: 1px; font-size: 9pt; }
 
 .skills-grid { display: flex; flex-wrap: wrap; gap: 4px; }
 .skill-tag {
@@ -52,8 +52,8 @@ li { margin-bottom: 2px; font-size: 9.5pt; }
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
-  margin-bottom: 4px;
+  gap: 3px;
+  margin-bottom: 3px;
 }
 
 .skill-category-label {
@@ -65,20 +65,44 @@ li { margin-bottom: 2px; font-size: 9.5pt; }
   letter-spacing: 0.5px;
 }
 
-.cert-line {
+.cert-tags {
   display: flex;
-  justify-content: space-between;
-  margin-bottom: 3px;
-  font-size: 9.5pt;
+  flex-wrap: wrap;
+  gap: 3px;
 }
 
-.cert-name {
+.cert-tag {
+  background: #f0f0f0;
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-size: 8pt;
   font-weight: 600;
+  color: #333;
 }
 
-.cert-meta {
+.cert-tag-meta {
+  font-weight: 400;
+  color: #666;
+}
+
+.project-line {
   font-size: 9pt;
-  color: #777;
+  margin-bottom: 2px;
+  line-height: 1.3;
+}
+
+.project-name {
+  font-weight: 700;
+  color: #222;
+}
+
+.project-stack {
+  font-size: 8.5pt;
+  color: #555;
+}
+
+.project-desc {
+  color: #333;
 }
 
 .stack-tags {

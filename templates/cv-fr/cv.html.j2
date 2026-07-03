@@ -63,10 +63,22 @@
 {% if certifications %}
 <div class="section">
   <div class="section-title">Certifications</div>
-  {% for cert in certifications %}
-  <div class="cert-line">
-    <span class="cert-name">{{ cert.name }}</span>
-    <span class="cert-meta">{{ cert.issuer }} &nbsp;·&nbsp; {{ cert.year }}</span>
+  <div class="cert-tags">
+    {% for cert in certifications %}
+    <span class="cert-tag">{{ cert.name }} <span class="cert-tag-meta">· {{ cert.issuer }}</span></span>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if projects %}
+<div class="section">
+  <div class="section-title">Projets</div>
+  {% for proj in projects %}
+  <div class="project-line">
+    <span class="project-name">{{ proj.name }}</span>
+    {% if proj.stack %}<span class="project-stack"> · {{ proj.stack | join(', ') }}</span>{% endif %}
+    <span class="project-desc"> — {{ proj.desc }}</span>
   </div>
   {% endfor %}
 </div>
@@ -93,6 +105,7 @@
   {% endfor %}
 </div>
 {% endif %}
+
 
 {% if hobbies %}
 <div class="section">

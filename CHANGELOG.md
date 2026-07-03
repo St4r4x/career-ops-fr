@@ -7,6 +7,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+- `dashboard/app.py` — add missing `from typing import Any` import for `_start_scan` annotation
+- `dashboard/db.py` — align `get_stats()` stale_count threshold to `>=` to match `get_followups()` cutoff behaviour
+
 ### Added
 - `dashboard/app.py` — `GET /stats` reads latest `reports/daily-*.md` and passes rendered HTML to template
 - `dashboard/templates/stats.html` — daily report widget: last scan report rendered as HTML

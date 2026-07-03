@@ -15,6 +15,7 @@ import argparse
 import asyncio
 import logging
 import re
+from html import unescape
 from pathlib import Path
 from typing import Optional
 
@@ -24,6 +25,13 @@ import yaml
 from scripts.models import RawOffer
 
 logger = logging.getLogger(__name__)
+
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def _strip_html(html: str) -> str:
+    return " ".join(unescape(_HTML_TAG_RE.sub(" ", html)).split())
+
 
 _DEFAULT_ATS_MAP = Path(__file__).parent.parent / "config" / "ats_map.yaml"
 _TIMEOUT = 10.0
@@ -85,14 +93,14 @@ class GreenhouseProvider:
             )
             return []
         jobs = resp.json().get("jobs", [])
-        offers = []
-        for j in jobs:
+
+        async def _fetch_gh_job(j: dict) -> Optional[RawOffer]:
             title = j.get("title", "").strip()
             job_url = j.get("absolute_url", "").strip()
             location = (j.get("location") or {}).get("name", "").strip() or None
             job_id = j.get("id")
             if not title:
-                continue
+                return None
             description = ""
             if job_id:
                 detail_url = (
@@ -100,20 +108,24 @@ class GreenhouseProvider:
                 )
                 try:
                     detail_resp = await _fetch_with_retry(client, detail_url)
-                    description = unescape(detail_resp.json().get("content", ""))[:8000]
+                    description = _strip_html(detail_resp.json().get("content", ""))[
+                        :8000
+                    ]
                 except Exception:
                     pass
-            offers.append(
-                RawOffer(
-                    title=title,
-                    company=company_name,
-                    url=job_url,
-                    portal="greenhouse",
-                    location=location,
-                    description=description,
-                )
+            return RawOffer(
+                title=title,
+                company=company_name,
+                url=job_url,
+                portal="greenhouse",
+                location=location,
+                description=description,
             )
-        return offers
+
+        results = await asyncio.gather(
+            *[_fetch_gh_job(j) for j in jobs], return_exceptions=True
+        )
+        return [r for r in results if isinstance(r, RawOffer)]
 
 
 class LeverProvider:
@@ -132,13 +144,13 @@ class LeverProvider:
         jobs = resp.json()
         if not isinstance(jobs, list):
             return []
-        offers = []
-        for j in jobs:
+
+        async def _fetch_lever_job(j: dict) -> Optional[RawOffer]:
             title = j.get("text", "").strip()
             job_url = j.get("hostedUrl", "").strip()
             location = (j.get("categories") or {}).get("location", "").strip() or None
             if not title:
-                continue
+                return None
             description = ""
             posting_id = job_url.rstrip("/").rsplit("/", 1)[-1] if job_url else ""
             if posting_id:
@@ -153,17 +165,19 @@ class LeverProvider:
                     )[:8000]
                 except Exception:
                     pass
-            offers.append(
-                RawOffer(
-                    title=title,
-                    company=company_name,
-                    url=job_url,
-                    portal="lever",
-                    location=location,
-                    description=description,
-                )
+            return RawOffer(
+                title=title,
+                company=company_name,
+                url=job_url,
+                portal="lever",
+                location=location,
+                description=description,
             )
-        return offers
+
+        results = await asyncio.gather(
+            *[_fetch_lever_job(j) for j in jobs], return_exceptions=True
+        )
+        return [r for r in results if isinstance(r, RawOffer)]
 
 
 class AshbyProvider:

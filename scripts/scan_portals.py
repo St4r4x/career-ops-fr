@@ -193,10 +193,9 @@ async def scrape_portal(
     keywords: str,
     location: str,
     *,
+    browser,
     max_pages_override: Optional[int] = None,
 ) -> list[RawOffer]:
-    from playwright.async_api import async_playwright
-
     config = load_portal_config(portal_id)
 
     if not portal_is_active(config):
@@ -220,126 +219,118 @@ async def scrape_portal(
     page_size = pagination.get("page_size", 10)
     offers: list[RawOffer] = []
 
-    async with async_playwright() as pw:
-        browser = await pw.chromium.launch(headless=True, channel="chrome")
-        try:
-            context = await browser.new_context(
-                user_agent=(
-                    "Mozilla/5.0 (X11; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0"
+    context = await browser.new_context(
+        user_agent=(
+            "Mozilla/5.0 (X11; Linux x86_64; rv:124.0) Gecko/20100101 Firefox/124.0"
+        )
+    )
+    try:
+        page = await context.new_page()
+        url = build_search_url(
+            config["search_url_template"], keywords=keywords, location=location
+        )
+        current_page = 0
+        max_pages = _effective_max_pages(config, max_pages_override)
+
+        while current_page < max_pages:
+            # next_button portals: after page 0, navigation is done by clicking — skip goto
+            if not (current_page > 0 and pagination_type == "next_button"):
+                logger.info(
+                    "[%s] Navigating to page %d: %s",
+                    portal_id,
+                    current_page + 1,
+                    url,
                 )
-            )
-            page = await context.new_page()
-            url = build_search_url(
-                config["search_url_template"], keywords=keywords, location=location
-            )
-            current_page = 0
-            max_pages = _effective_max_pages(config, max_pages_override)
-
-            while current_page < max_pages:
-                # next_button portals: after page 0, navigation is done by clicking — skip goto
-                if not (current_page > 0 and pagination_type == "next_button"):
-                    logger.info(
-                        "[%s] Navigating to page %d: %s",
-                        portal_id,
-                        current_page + 1,
-                        url,
-                    )
-                    try:
-                        await page.goto(url, wait_until="networkidle", timeout=30_000)
-                    except Exception as exc:
-                        logger.warning("[%s] Navigation error: %s", portal_id, exc)
-                        break
-
                 try:
-                    await page.wait_for_selector(
-                        selectors["offer_card"], timeout=10_000
-                    )
-                except Exception:
-                    logger.warning(
-                        "[%s] No offer cards found on page %d",
-                        portal_id,
-                        current_page + 1,
-                    )
+                    await page.goto(url, wait_until="domcontentloaded", timeout=30_000)
+                except Exception as exc:
+                    logger.warning("[%s] Navigation error: %s", portal_id, exc)
                     break
 
-                if pagination_type == "scroll":
-                    await page.evaluate(
-                        "window.scrollTo(0, document.body.scrollHeight)"
-                    )
-                    await page.wait_for_load_state("networkidle")
-
-                cards = await page.query_selector_all(selectors["offer_card"])
-                logger.info(
-                    "[%s] Found %d cards on page %d",
+            try:
+                await page.wait_for_selector(selectors["offer_card"], timeout=10_000)
+            except Exception:
+                logger.warning(
+                    "[%s] No offer cards found on page %d",
                     portal_id,
-                    len(cards),
                     current_page + 1,
                 )
+                break
 
-                for card in cards:
-                    card_data = {
-                        "title": await _card_text(card, selectors["title"]),
-                        "company": await _card_text(card, selectors["company"]),
-                        "url": await _card_href(card, selectors["url"]),
-                        "location": await _card_text(
-                            card, selectors.get("location", "")
-                        ),
-                        "date": await _card_datetime(card, selectors.get("date", "")),
-                    }
-                    offer = extract_offer_from_card_data(
-                        card_data, portal_id=portal_id, base_url=base_url
-                    )
-                    if offer:
-                        offers.append(offer)
+            if pagination_type == "scroll":
+                await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                await page.wait_for_load_state("load")
 
-                if pagination_type == "next_button":
-                    next_btn = await page.query_selector(pagination["next_selector"])
-                    if not next_btn:
-                        break
-                    await next_btn.click()
-                    await page.wait_for_load_state("networkidle")
-                    current_page += 1
-                elif pagination_type == "page_param":
-                    current_page += 1
-                    parsed = urlparse(url)
-                    params = parse_qs(parsed.query)
-                    params[pagination["page_param"]] = [str(current_page * page_size)]
-                    new_query = urlencode({k: v[0] for k, v in params.items()})
-                    url = urlunparse(parsed._replace(query=new_query))
-                elif pagination_type == "scroll":
-                    current_page += 1
-                else:
-                    break
+            cards = await page.query_selector_all(selectors["offer_card"])
+            logger.info(
+                "[%s] Found %d cards on page %d",
+                portal_id,
+                len(cards),
+                current_page + 1,
+            )
 
-            desc_selector: str = selectors.get("description", "")
-            if desc_selector and offers:
-                sem = asyncio.Semaphore(5)
-
-                async def _enrich(offer: RawOffer) -> None:
-                    if not offer.url:
-                        return
-                    async with sem:
-                        try:
-                            offer.description = await asyncio.wait_for(
-                                _fetch_description(context, offer.url, desc_selector),
-                                timeout=15.0,
-                            )
-                        except asyncio.TimeoutError:
-                            logger.warning(
-                                "[%s] Description fetch timed out: %s",
-                                portal_id,
-                                offer.url,
-                            )
-                            offer.description = ""
-
-                await asyncio.gather(*[_enrich(o) for o in offers])
-                logger.info(
-                    "[%s] Fetched descriptions for %d offers",
-                    portal_id,
-                    sum(1 for o in offers if o.description),
+            for card in cards:
+                card_data = {
+                    "title": await _card_text(card, selectors["title"]),
+                    "company": await _card_text(card, selectors["company"]),
+                    "url": await _card_href(card, selectors["url"]),
+                    "location": await _card_text(card, selectors.get("location", "")),
+                    "date": await _card_datetime(card, selectors.get("date", "")),
+                }
+                offer = extract_offer_from_card_data(
+                    card_data, portal_id=portal_id, base_url=base_url
                 )
-        finally:
-            await browser.close()
+                if offer:
+                    offers.append(offer)
+
+            if pagination_type == "next_button":
+                next_btn = await page.query_selector(pagination["next_selector"])
+                if not next_btn:
+                    break
+                await next_btn.click()
+                await page.wait_for_load_state("load")
+                current_page += 1
+            elif pagination_type == "page_param":
+                current_page += 1
+                parsed = urlparse(url)
+                params = parse_qs(parsed.query)
+                params[pagination["page_param"]] = [str(current_page * page_size)]
+                new_query = urlencode({k: v[0] for k, v in params.items()})
+                url = urlunparse(parsed._replace(query=new_query))
+            elif pagination_type == "scroll":
+                current_page += 1
+            else:
+                break
+
+        desc_selector: str = selectors.get("description", "")
+        if desc_selector and offers:
+            sem = asyncio.Semaphore(15)
+
+            async def _enrich(offer: RawOffer) -> None:
+                if not offer.url:
+                    return
+                async with sem:
+                    try:
+                        offer.description = await asyncio.wait_for(
+                            _fetch_description(context, offer.url, desc_selector),
+                            timeout=15.0,
+                        )
+                    except asyncio.TimeoutError:
+                        logger.warning(
+                            "[%s] Description fetch timed out: %s",
+                            portal_id,
+                            offer.url,
+                        )
+                        offer.description = ""
+
+            await asyncio.gather(*[_enrich(o) for o in offers])
+            logger.info(
+                "[%s] Fetched descriptions for %d offers",
+                portal_id,
+                sum(1 for o in offers if o.description),
+            )
+    finally:
+        await context.close()
 
     logger.info("[%s] Total offers scraped: %d", portal_id, len(offers))
     return offers
@@ -352,11 +343,25 @@ async def run_scan(
     *,
     max_pages_override: Optional[int] = None,
 ) -> list[RawOffer]:
-    tasks = [
-        scrape_portal(pid, keywords, location, max_pages_override=max_pages_override)
-        for pid in portal_ids
-    ]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
+    from playwright.async_api import async_playwright
+
+    async with async_playwright() as pw:
+        browser = await pw.chromium.launch(headless=True, channel="chrome")
+        try:
+            tasks = [
+                scrape_portal(
+                    pid,
+                    keywords,
+                    location,
+                    browser=browser,
+                    max_pages_override=max_pages_override,
+                )
+                for pid in portal_ids
+            ]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+        finally:
+            await browser.close()
+
     all_offers: list[RawOffer] = []
     for pid, result in zip(portal_ids, results):
         if isinstance(result, Exception):

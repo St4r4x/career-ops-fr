@@ -90,6 +90,16 @@ Do **not** update the README for internal refactors that don't change the public
 ### Virtual environment
 - Always use `.venv` at repo root — never install to system Python
 
+### Cover letter writing rules
+When writing or editing cover letter JSON files (`config/cover-letter-*.json`):
+- No em-dashes or en-dashes (— –). Use commas, periods, or rephrase.
+- No hollow phrases: "à fort impact", "de bout en bout", "production-first", "rigueur technique", "mettre mes compétences au service de", "je serais ravi d'échanger sur la façon dont", "dans l'attente de votre retour".
+- Plain, direct language — write as if Arnaud is writing himself, not a recruiter.
+- Opening: concrete — where he comes from, why he's leaving, why this company specifically.
+- Body: factual proof points, no superlatives.
+- Closing paragraph: short. "Je suis disponible dès [date]. Je serais content d'en discuter si mon profil correspond."
+- Sign-off (`closing_line`): "Cordialement,"
+
 ## graphify
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.

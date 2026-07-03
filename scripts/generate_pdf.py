@@ -83,6 +83,7 @@ def build_cv_context(
     github: str = "",
     hobbies: list[str] | None = None,
     certifications: list[dict] | None = None,
+    projects: list[dict] | None = None,
 ) -> dict:
     return {
         "name": name,
@@ -100,6 +101,7 @@ def build_cv_context(
         "languages": languages,
         "hobbies": hobbies or [],
         "certifications": certifications,
+        "projects": projects,
     }
 
 
@@ -149,6 +151,7 @@ def default_context(lang: str = "fr") -> dict:
         languages=cv.get("languages", []),
         hobbies=cv.get("hobbies", []),
         certifications=cv.get("certifications"),
+        projects=cv.get("projects"),
     )
 
 

@@ -1,0 +1,14 @@
+{
+  "company": "Ubisoft Paris Studio",
+  "role": "Software Engineer (MLOps)",
+  "lang": "fr",
+  "recipient": "Madame, Monsieur,",
+  "subject": "Candidature au poste de Software Engineer (MLOps) — Ubisoft Paris Studio",
+  "paragraphs": [
+    "Passionné de jeux vidéo depuis toujours, je suis particulièrement motivé par l'opportunité de rejoindre Ubisoft Paris Studio pour construire l'infrastructure MLOps qui permettra aux Data Scientists et ML Engineers de concevoir les mécaniques de demain. Concevoir des pipelines robustes, standardiser les pratiques et déployer des services ML de façon fiable et reproductible, c'est précisément ce que je fais en production depuis plus de 2 ans.",
+    "Chez Missia (alternance depuis 2023), j'ai mis en place et maintenu une infrastructure MLOps complète : Docker multi-arch (AMD64/ARM64), CI/CD GitHub Actions avec déploiement automatisé sur GHCR, tracking d'expériences MLflow, entraînement sur AWS SageMaker Spot avec reproductibilité garantie, et services FastAPI servant les modèles en inférence. J'ai structuré des pipelines modulaires et documentés — fine-tuning Transformers, Computer Vision, pipelines d'embeddings — conçus pour être réutilisés entre projets.",
+    "Mon stage chez GoodBarber (2023) m'a appris à traduire les besoins de clients internes (ici les développeurs) en composants techniques livrables : moteur de recherche sémantique intégré dans un backend Django de production, livré en 3 mois avec tests unitaires et Docker. Par ailleurs, je construis et opère au quotidien career-ops-fr, un pipeline de scraping, scoring LLM et génération PDF — experience directe de l'orchestration et de l'observabilité d'un système ML end-to-end.",
+    "Disponible dès fin 2026, je serais ravi d'échanger sur la façon dont je pourrais contribuer à l'équipe IA d'Ubisoft Paris Studio."
+  ],
+  "closing_line": "Dans l'attente de votre retour, je reste à votre disposition pour tout échange complémentaire."
+}

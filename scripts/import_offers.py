@@ -227,10 +227,16 @@ async def _run_pipeline(settings: dict) -> list[RawOffer]:
         location,
     )
     portal_raw: list[RawOffer] = []
-    for query in portal_queries:
-        batch = await run_scan(portal_ids, keywords=query, location=location)
-        logger.info("Query '%s': %d raw offers", query, len(batch))
-        portal_raw.extend(batch)
+    batches = await asyncio.gather(
+        *[run_scan(portal_ids, keywords=q, location=location) for q in portal_queries],
+        return_exceptions=True,
+    )
+    for query, batch in zip(portal_queries, batches):
+        if isinstance(batch, Exception):
+            logger.error("Portal query '%s' failed: %s", query, batch)
+        else:
+            logger.info("Query '%s': %d raw offers", query, len(batch))
+            portal_raw.extend(batch)
     logger.info("Scraped %d raw offers from portals (before dedup)", len(portal_raw))
     ats_raw = await scan_ats(keywords=keyword_list)
     logger.info("Scraped %d raw offers from ATS", len(ats_raw))

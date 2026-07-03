@@ -149,7 +149,7 @@ class DB:
             if s == "Envoyée" and r.get("send_date"):
                 try:
                     send_dt = date.fromisoformat(r["send_date"])
-                    if (today - send_dt).days > _FOLLOW_UP_DAYS:
+                    if (today - send_dt).days >= _FOLLOW_UP_DAYS:
                         stale += 1
                 except ValueError:
                     pass

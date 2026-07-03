@@ -775,3 +775,38 @@ class TestCoverLetters:
         monkeypatch.setattr(dashboard_app, "CONFIG_DIR", tmp_path)
         r = client.get("/cover-letters")
         assert "Premier paragraphe unique." in r.text
+
+
+class TestStatsFunnel:
+    def test_stats_shows_funnel_steps(self, client_with_data):
+        r = client_with_data.get("/stats")
+        assert r.status_code == 200
+        assert "Entretien RH" in r.text
+        assert "Entretien tech" in r.text
+
+    def test_stats_shows_exit_statuses(self, client_with_data):
+        r = client_with_data.get("/stats")
+        assert "Refusée" in r.text
+        assert "Abandonnée" in r.text
+
+    def test_build_funnel_computes_rate(self):
+        from app import _build_funnel
+
+        by_status = {
+            "À envoyer": 10,
+            "Envoyée": 5,
+            "Relance": 0,
+            "Entretien RH": 2,
+            "Entretien tech": 1,
+            "Offre": 0,
+            "Acceptée": 0,
+            "Refusée": 1,
+            "Abandonnée": 2,
+        }
+        funnel, exits = _build_funnel(by_status)
+        envoyee_step = next(s for s in funnel if s["status"] == "Envoyée")
+        assert envoyee_step["rate"] == 50.0
+        entretien_step = next(s for s in funnel if s["status"] == "Entretien RH")
+        assert entretien_step["rate"] is None  # prev (Relance) is 0
+        assert len(exits) == 2
+        assert exits[0]["status"] == "Refusée"

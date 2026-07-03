@@ -38,6 +38,32 @@ GRADE_COLORS: dict[str, str] = {
     "F": "bg-red-700 text-white",
 }
 
+_FUNNEL_STEPS = [
+    "À envoyer",
+    "Envoyée",
+    "Relance",
+    "Entretien RH",
+    "Entretien tech",
+    "Offre",
+    "Acceptée",
+]
+_EXIT_STEPS = ["Refusée", "Abandonnée"]
+
+
+def _build_funnel(
+    by_status: dict[str, int],
+) -> tuple[list[dict], list[dict]]:
+    funnel: list[dict] = []
+    for i, s in enumerate(_FUNNEL_STEPS):
+        count = by_status.get(s, 0)
+        prev_count = by_status.get(_FUNNEL_STEPS[i - 1], 0) if i > 0 else None
+        rate = round(count / prev_count * 100, 1) if prev_count else None
+        funnel.append({"status": s, "count": count, "rate": rate})
+    exits = [
+        {"status": s, "count": by_status.get(s, 0), "rate": None} for s in _EXIT_STEPS
+    ]
+    return funnel, exits
+
 
 def _parse_description(raw: str) -> dict:
     """Return parsed description dict from JSON, or legacy text in mission field."""
@@ -269,12 +295,15 @@ async def offer_status(request: Request, offer_id: int, status: str = Form(...))
 async def stats_page(request: Request):
     db = request.app.state.db
     stats = db.get_stats()
+    funnel, exits = _build_funnel(stats["by_status"])
     return templates.TemplateResponse(
         request,
         "stats.html",
         {
             "stats": stats,
             "statuses": VALID_STATUSES,
+            "funnel": funnel,
+            "exits": exits,
         },
     )
 

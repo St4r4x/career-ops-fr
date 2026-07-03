@@ -5,6 +5,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [Unreleased]
+
+### Added
+- `config/settings.yaml.example` — template for search keywords, location, salary range, target companies
+- `config/ats_map.yaml.example` — template for direct ATS URLs (Greenhouse/Lever/Ashby)
+- `docs/todo-deployment.md` — SaaS deployment roadmap (auth, multi-tenancy, LLM migration, security)
+
+### Changed
+- `.gitignore` — untrack personal config files: `config/settings.yaml`, `config/ats_map.yaml`, `config/cover-letter-*.json`
+- `README.md` — add `settings.yaml` and `ats_map.yaml` to quick start setup steps
+
 ## [0.10.0] — 2026-07-03
 
 ### Added

@@ -22,6 +22,9 @@ graphify-out/
 config/profile.md
 config/contact.yaml
 config/cv.yaml
+config/settings.yaml
+config/ats_map.yaml
+config/cover-letter-*.json
 # claude code local settings
 .claude/
 # playwright mcp logs

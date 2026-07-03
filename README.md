@@ -37,6 +37,8 @@ playwright install chromium
 cp config/contact.yaml.example config/contact.yaml   # name, email, phone, LinkedIn, GitHub
 cp config/profile.md.example   config/profile.md     # full professional profile for scoring & LLM modes
 cp config/cv.yaml.example      config/cv.yaml        # CV content (experience, skills, education)
+cp config/settings.yaml.example config/settings.yaml # search keywords, location, salary range, target companies
+cp config/ats_map.yaml.example  config/ats_map.yaml  # direct ATS URLs to monitor (Greenhouse/Lever/Ashby)
 ```
 
 Edit each file with your real information. These three files are gitignored and never committed.

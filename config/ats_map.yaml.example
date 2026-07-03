@@ -1,0 +1,15 @@
+# ATS job board map — add the companies you want to monitor directly.
+# Provider is auto-detected from careers_url pattern.
+# Supported: greenhouse.io, jobs.lever.co, jobs.ashbyhq.com
+
+# --- Lever ---
+- name: "Mistral AI"
+  careers_url: "https://jobs.lever.co/mistral"
+
+# --- Greenhouse ---
+- name: "Hugging Face"
+  careers_url: "https://boards.greenhouse.io/huggingface"
+
+# --- Ashby ---
+# - name: "Example Corp"
+#   careers_url: "https://jobs.ashbyhq.com/example"

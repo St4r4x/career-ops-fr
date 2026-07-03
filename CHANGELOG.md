@@ -9,6 +9,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 - `dashboard/db.py` — `DB.get_followups()`: returns applications in status "Envoyée" or "Entretien RH" with `send_date` older than `_FOLLOW_UP_DAYS` days
+- `dashboard/app.py`, `dashboard/templates/index.html` — follow-up bandeau: amber warning bar when applications in "Envoyée" or "Entretien RH" are overdue (> 7 days since `send_date`)
+- `dashboard/templates/partials/offer_list.html` — red dot indicator on overdue offer rows
 
 ## 2026-07-01
 

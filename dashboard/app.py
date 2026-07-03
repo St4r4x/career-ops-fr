@@ -88,6 +88,8 @@ templates.env.globals["GRADE_COLORS"] = GRADE_COLORS
 async def index(request: Request):
     db = request.app.state.db
     offers = db.get_all({})
+    followups = db.get_followups()
+    followup_ids = {f["id"] for f in followups}
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -96,6 +98,8 @@ async def index(request: Request):
             "statuses": VALID_STATUSES,
             "status": request.app.state.scan_status,
             "result": request.app.state.scan_result,
+            "followups": followups,
+            "followup_ids": followup_ids,
         },
     )
 
@@ -120,11 +124,13 @@ async def offer_list(
         if v
     }
     offers = db.get_all(filters)
+    followup_ids = {f["id"] for f in db.get_followups()}
     return templates.TemplateResponse(
         request,
         "partials/offer_list.html",
         {
             "offers": offers,
+            "followup_ids": followup_ids,
         },
     )
 
@@ -514,25 +520,33 @@ async def _run_scan_task(app_state) -> None:
         app_state.scan_status = "error"
 
 
+def _start_scan(app_state) -> bool:
+    """Set state to running and enqueue task. Returns False if already running."""
+    if app_state.scan_status == "running":
+        return False
+    app_state.scan_status = "running"
+    app_state.scan_result = {
+        "inserted": 0,
+        "skipped": 0,
+        "found": 0,
+        "scored": 0,
+        "abandoned": 0,
+        "error": "",
+    }
+    asyncio.create_task(_run_scan_task(app_state))
+    return True
+
+
 @app.post("/scan/start", response_class=HTMLResponse)
 async def scan_start(request: Request):
     async with _scan_lock:
-        if request.app.state.scan_status == "running":
+        started = _start_scan(request.app.state)
+        if not started:
             return templates.TemplateResponse(
                 request,
                 "partials/scan_status.html",
                 {"status": "running", "result": request.app.state.scan_result},
             )
-        request.app.state.scan_status = "running"
-        request.app.state.scan_result = {
-            "inserted": 0,
-            "skipped": 0,
-            "found": 0,
-            "scored": 0,
-            "abandoned": 0,
-            "error": "",
-        }
-    asyncio.create_task(_run_scan_task(request.app.state))
     return templates.TemplateResponse(
         request,
         "partials/scan_status.html",

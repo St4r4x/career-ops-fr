@@ -12,9 +12,15 @@
   hx-target="#offer-detail"
   hx-swap="innerHTML">
 
-  <!-- Avatar initials -->
-  <div class="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white bg-accent">
-    {{ initials }}
+  <!-- Avatar initials with optional follow-up dot -->
+  <div class="shrink-0 relative w-8 h-8">
+    <div class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white bg-accent">
+      {{ initials }}
+    </div>
+    {% if followup_ids is defined and offer.id in followup_ids %}
+    <span class="followup-dot absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-500 border-2"
+          style="border-color:#1e1535;" title="Relance en attente"></span>
+    {% endif %}
   </div>
 
   <!-- Company + role -->

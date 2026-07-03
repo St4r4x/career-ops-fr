@@ -681,3 +681,43 @@ class TestGetFollowups:
         db.conn.commit()
         result = db.get_followups()
         assert not any(r["company"] == "No Date Co" for r in result)
+
+
+class TestFollowupReminders:
+    def _insert_overdue(self, db, company: str, status: str) -> None:
+        db.conn.execute(
+            "INSERT INTO applications (company, role, offer_url, detection_date, "
+            "score_grade, score_value, status, send_date) VALUES (?,?,?,?,?,?,?,?)",
+            (
+                company,
+                "ML Eng",
+                "https://example.com",
+                "2026-06-01",
+                "B",
+                3.5,
+                status,
+                "2026-06-01",
+            ),
+        )
+        db.conn.commit()
+
+    def test_bandeau_shown_when_overdue_envoyee(self, client):
+        import app as dashboard_app
+
+        self._insert_overdue(dashboard_app.app.state.db, "OverdueCo", "Envoyée")
+        r = client.get("/")
+        assert r.status_code == 200
+        assert "relancer" in r.text.lower()
+
+    def test_bandeau_hidden_when_no_followups(self, client):
+        r = client.get("/")
+        assert r.status_code == 200
+        assert "à relancer" not in r.text.lower()
+
+    def test_offer_list_shows_followup_dot_for_overdue(self, client):
+        import app as dashboard_app
+
+        self._insert_overdue(dashboard_app.app.state.db, "DotCo", "Entretien RH")
+        r = client.get("/offers")
+        assert r.status_code == 200
+        assert "followup-dot" in r.text

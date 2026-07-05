@@ -8,6 +8,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- `dashboard/auth.py` — Supabase JWT verification dependency (`get_current_user`); raises 401 on missing/expired/invalid token
+- `tests/test_auth.py` — 4 tests covering valid token, missing token, expired token, wrong secret
 - `dashboard/db.py` — rewritten for PostgreSQL (psycopg2); all methods now accept `user_id: str` and scope queries to that user; `open_db(url)` replaces `open_db(path)`; `_migrate()` removed (Alembic handles schema)
 - `tests/test_dashboard_db.py` — migrated from SQLite in-memory to PostgreSQL temp table fixture; added user isolation tests
 - `alembic/` — Alembic migration setup; `alembic upgrade head` creates the `applications` table with `user_id VARCHAR(36) NOT NULL` and composite index on `(user_id, status)`

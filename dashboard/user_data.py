@@ -99,6 +99,7 @@ def _migrate_settings_from_files() -> dict[str, Any] | None:
 
 
 def get_profile(conn: psycopg2.extensions.connection, user_id: str) -> dict[str, Any]:
+    # Exception to "caller owns commit": auto-migration path commits once, on first login only.
     with conn.cursor() as cur:
         cur.execute(
             f"SELECT {', '.join(_PROFILE_KEYS)} FROM user_profiles WHERE user_id = %s",
@@ -131,6 +132,7 @@ def save_profile(
 
 
 def get_settings(conn: psycopg2.extensions.connection, user_id: str) -> dict[str, Any]:
+    # Exception to "caller owns commit": auto-migration path commits once, on first login only.
     with conn.cursor() as cur:
         cur.execute(
             f"SELECT {', '.join(_SETTINGS_KEYS)} FROM user_settings WHERE user_id = %s",
@@ -190,6 +192,7 @@ def _migrate_ats_from_files() -> list[dict[str, str]] | None:
 def get_ats_targets(
     conn: psycopg2.extensions.connection, user_id: str
 ) -> list[dict[str, Any]]:
+    # Exception to "caller owns commit": auto-migration path commits once, on first login only.
     with conn.cursor() as cur:
         cur.execute(
             "SELECT id, name, careers_url FROM user_ats_targets WHERE user_id = %s ORDER BY id",
@@ -287,6 +290,7 @@ def _migrate_cv_from_files(lang: str = "fr") -> dict[str, Any] | None:
 def get_cv(
     conn: psycopg2.extensions.connection, user_id: str, lang: str = "fr"
 ) -> dict[str, Any]:
+    # Exception to "caller owns commit": auto-migration path commits once, on first login only.
     with conn.cursor() as cur:
         cur.execute(
             "SELECT summary FROM user_cv_meta WHERE user_id = %s AND lang = %s",

@@ -5,8 +5,6 @@ import os
 import jwt
 from fastapi import HTTPException, Request, Response
 
-_ALGORITHM = "HS256"
-_AUDIENCE = "authenticated"
 _COOKIE_SESSION = "session"
 _COOKIE_REFRESH = "refresh"
 _COOKIE_MAX_AGE_SESSION = 3600
@@ -16,20 +14,46 @@ CurrentUser = dict
 
 _DEV_USER: CurrentUser = {"sub": "dev-user-local", "email": "arnaud@local"}
 
+# Cached JWKS client — created lazily so tests can set env vars first.
+_jwks_client: jwt.PyJWKClient | None = None
 
-def _jwt_secret() -> str:
-    return os.getenv("SUPABASE_JWT_SECRET", "")
+
+def _get_jwks_client() -> jwt.PyJWKClient | None:
+    global _jwks_client
+    supabase_url = os.getenv("SUPABASE_URL", "")
+    if not supabase_url:
+        return None
+    if _jwks_client is None:
+        _jwks_client = jwt.PyJWKClient(f"{supabase_url}/auth/v1/.well-known/jwks.json")
+    return _jwks_client
+
+
+def _decode_token(token: str) -> dict:
+    """Decode a Supabase JWT using JWKS (ES256) with HS256 fallback for tests."""
+    client = _get_jwks_client()
+    if client is not None:
+        try:
+            signing_key = client.get_signing_key_from_jwt(token)
+            return jwt.decode(
+                token,
+                signing_key.key,
+                algorithms=["ES256", "RS256", "HS256"],
+                audience="authenticated",
+            )
+        except jwt.PyJWKClientError:
+            pass  # JWKS unavailable — fall through to HS256
+
+    # HS256 fallback (used in tests where SUPABASE_URL is not set)
+    secret = os.getenv("SUPABASE_JWT_SECRET", "")
+    if not secret:
+        raise jwt.InvalidTokenError("No JWT secret configured")
+    return jwt.decode(token, secret, algorithms=["HS256"], audience="authenticated")
 
 
 def validate_access_token(token: str) -> CurrentUser:
-    """Decode and validate a Supabase access token. Raises HTTPException(401) if invalid."""
-    secret = _jwt_secret()
-    if not secret:
-        raise HTTPException(
-            status_code=500, detail="SUPABASE_JWT_SECRET is not configured"
-        )
+    """Verify token signature and expiry. Raises HTTPException(401) if invalid."""
     try:
-        payload = jwt.decode(token, secret, algorithms=[_ALGORITHM], audience=_AUDIENCE)
+        payload = _decode_token(token)
     except jwt.InvalidTokenError as exc:
         raise HTTPException(status_code=401, detail="Invalid token") from exc
     return {"sub": payload["sub"], "email": payload.get("email", "")}
@@ -41,13 +65,8 @@ def get_current_user(request: Request) -> CurrentUser:
     token = request.cookies.get(_COOKIE_SESSION)
     if not token:
         raise HTTPException(status_code=302, headers={"location": "/login"})
-    secret = _jwt_secret()
-    if not secret:
-        raise HTTPException(
-            status_code=500, detail="SUPABASE_JWT_SECRET is not configured"
-        )
     try:
-        payload = jwt.decode(token, secret, algorithms=[_ALGORITHM], audience=_AUDIENCE)
+        payload = _decode_token(token)
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=302, headers={"location": "/login"})
     except jwt.InvalidTokenError:

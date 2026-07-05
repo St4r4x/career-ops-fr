@@ -8,11 +8,13 @@ services:
       - ./reports:/app/reports
       - ./output:/app/output
       - ./config:/app/config:ro
+      - ./dashboard/templates:/app/dashboard/templates:ro
     env_file: .env
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:54322/postgres
+      - SUPABASE_URL=http://host.docker.internal:54321
     restart: unless-stopped
 
   pipeline:

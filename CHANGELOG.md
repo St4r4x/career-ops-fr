@@ -10,6 +10,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## 2026-07-05
 
 ### Fixed
+- `dashboard/auth.py` — switched JWT validation to JWKS (ES256) via `PyJWKClient`; Supabase CLI recent versions sign tokens with ES256 not HS256; HS256 fallback kept for tests
+- `dashboard/auth.py` — removed `_ALGORITHM`/`_AUDIENCE` module constants; validation now dynamic via `_decode_token()`
+- `requirements.txt` — added `cryptography==42.0.8` (required by PyJWT for ES256 support)
+- `docker-compose.yml` — override `SUPABASE_URL` to `http://host.docker.internal:54321` so the container can reach the JWKS endpoint on the host
+- `docker-compose.yml` — mount `dashboard/templates` as a volume so template changes don't require a full image rebuild
+- `dashboard/templates/auth/login.html` — added defensive init guard, loading state, and precise error messages
+- `dashboard/templates/auth/signup.html` — added defensive init guard, loading state, precise error messages, and `name`/`autocomplete` attributes on inputs
+
+### Fixed
 - `dashboard/auth.py` — `set_auth_cookies` now reads `COOKIE_SECURE` env var and sets `secure=True` on both cookies when enabled; defaults to `false` for local HTTP dev
 - `dashboard/auth.py` — extracted `validate_access_token()` helper that decodes and validates a Supabase JWT; raises 401 on invalid token
 - `dashboard/app.py` — `POST /auth/session` now calls `validate_access_token` before setting cookies, preventing session fixation via arbitrary token injection

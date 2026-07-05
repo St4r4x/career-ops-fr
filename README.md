@@ -8,7 +8,7 @@ Automated AI/ML job search pipeline for the French market — scraping, scoring,
 ┌─────────────────────────────────────────────────────────────────┐
 │  1. SCAN          Scrape job portals + ATS → raw offers          │
 │  2. SCORE         Keyword + description signals → grade A–F      │
-│  3. IMPORT        Deduplicate, filter, store in SQLite DB        │
+│  3. IMPORT        Deduplicate, filter, store in PostgreSQL DB     │
 │  4. DASHBOARD     Review offers, track applications              │
 │  5. APPLY         Generate tailored CV + cover letter + prep     │
 └─────────────────────────────────────────────────────────────────┘
@@ -31,7 +31,39 @@ pip install -r requirements.txt
 playwright install chromium
 ```
 
-### 2. Configure your profile (gitignored — personal data)
+### 2. Start the local Supabase stack
+
+```bash
+supabase start
+# Gives you: API URL, anon key, JWT secret, DB URL
+```
+
+### 3. Configure environment
+
+```bash
+cp .env.example .env
+# Fill in values from `supabase status`
+```
+
+Key variables:
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL URL — `postgresql://postgres:postgres@127.0.0.1:54322/postgres` |
+| `SUPABASE_URL` | Internal Supabase API URL (used by the container for JWKS) — `http://host.docker.internal:54321` in Docker |
+| `SUPABASE_PUBLIC_URL` | Browser-facing Supabase URL — `http://localhost:54321` |
+| `SUPABASE_ANON_KEY` | Anon key from `supabase status` |
+| `SUPABASE_JWT_SECRET` | JWT secret from `supabase status` |
+| `COOKIE_SECURE` | Set to `true` in production (HTTPS only); `false` for local dev |
+| `DEV_AUTO_LOGIN` | Set to `true` to bypass auth in local dev (hardcoded dev user) |
+
+### 4. Run database migrations
+
+```bash
+alembic upgrade head
+```
+
+### 5. Configure your profile (gitignored — personal data)
 
 ```bash
 cp config/contact.yaml.example config/contact.yaml   # name, email, phone, LinkedIn, GitHub
@@ -41,32 +73,31 @@ cp config/settings.yaml.example config/settings.yaml # search keywords, location
 cp config/ats_map.yaml.example  config/ats_map.yaml  # direct ATS URLs to monitor (Greenhouse/Lever/Ashby)
 ```
 
-Edit each file with your real information. These three files are gitignored and never committed.
-
-### 3. Configure search settings
-
-Edit `config/settings.yaml`:
-- `search.keywords` — job titles to search (e.g. "AI Engineer", "ML Engineer")
-- `search.location` — target city (default: "Paris")
-- `scoring.target_salary_min/max` — your salary range in € for scoring
-- `target_companies` — companies that get a scoring bonus
-
-Edit `config/ats_map.yaml` to add direct ATS URLs (Greenhouse / Lever / Ashby) for companies you want to monitor.
-
-### 4. Set your API key
-
-```bash
-export ANTHROPIC_API_KEY=sk-ant-...
-```
-
-### 5. Start the dashboard
+### 6. Start the dashboard
 
 ```bash
 docker compose up dashboard
 # → http://localhost:8000
 ```
 
-Click **Scanner** to run the full pipeline. New offers appear in the list automatically.
+Log in at `/login` with your Supabase account (create one at `/signup`).
+
+---
+
+## Authentication
+
+The dashboard uses [Supabase Auth](https://supabase.com/docs/guides/auth) with httpOnly session cookies.
+
+| Route | Description |
+|-------|-------------|
+| `/login` | Email + password login |
+| `/signup` | Account creation (email confirmation disabled in local dev) |
+| `/auth/confirm` | Post-signup confirmation page |
+| `/auth/reset-password` | Password reset (link sent by email) |
+
+In local dev, emails are intercepted by **Inbucket** at `http://localhost:54324`.
+
+To bypass auth entirely during development, set `DEV_AUTO_LOGIN=true` in `.env`.
 
 ---
 
@@ -168,18 +199,23 @@ docker compose --profile manual run --rm pipeline
 docker compose exec dashboard python3 scripts/backfill_descriptions.py
 ```
 
+The dashboard container connects to the host-side Supabase CLI stack via `host.docker.internal`.
+
 ---
 
 ## Configuration files
 
 | File | Tracked | Purpose |
 |------|---------|---------|
+| `.env` | ❌ gitignored | Runtime secrets (DB URL, Supabase keys, API keys) |
+| `.env.example` | ✅ | Template for `.env` |
 | `config/contact.yaml` | ❌ gitignored | Name, email, phone, LinkedIn, GitHub |
 | `config/profile.md` | ❌ gitignored | Full profile used by LLM scoring modes |
 | `config/cv.yaml` | ❌ gitignored | CV content: experience (with stack tags), skill_categories, certifications, education, hobbies |
 | `config/settings.yaml` | ✅ | Search keywords, salary range, scoring thresholds, target companies |
 | `config/ats_map.yaml` | ✅ | Direct ATS URLs for Greenhouse / Lever / Ashby companies |
-| `portals/fr/*.yaml` | ✅ | Portal scraper configs (selectors, pagination) |
+| `portals/fr/*.yaml` | ✅ | Portal scraper YAML configs (selectors, pagination) |
+| `supabase/` | ✅ | Supabase CLI local config (`config.toml`) |
 
 `*.example` files are provided for each gitignored config — copy and fill in your data.
 
@@ -204,11 +240,20 @@ scripts/
   models.py                 Shared data models
 
 dashboard/
-  app.py                    FastAPI routes (/, /stats, /profile, /scan/*, /offers/*)
-  db.py                     SQLite persistence layer
+  app.py                    FastAPI routes (/, /stats, /profile, /scan/*, /offers/*, /login, /signup, /auth/*)
+  auth.py                   Supabase JWT validation (JWKS/ES256), cookie helpers, DEV_AUTO_LOGIN bypass
+  db.py                     PostgreSQL persistence layer (psycopg2, all queries scoped by user_id)
   profile_parser.py         Load/save profile.md and contact.yaml
-  templates/                Jinja2 templates (base, pages, HTMX partials)
-  data/                     applications.db (gitignored)
+  templates/
+    base.html               Layout with nav (user email + logout)
+    auth/                   Login, signup, confirm, reset-password pages (supabase-js v2)
+    partials/               HTMX partial templates
+  data/                     (gitignored)
+
+supabase/
+  config.toml               Supabase CLI local config (auth, DB, redirects)
+
+migrations/                 Alembic migrations (PostgreSQL schema)
 
 templates/
   cv-fr/                    French CV template (HTML + CSS)
@@ -219,7 +264,7 @@ templates/
 config/                     Settings and gitignored personal data
 modes/                      Claude Code instruction files
 portals/fr/                 Portal scraper YAML configs
-tests/                      pytest suite (256 tests)
+tests/                      pytest suite
 output/                     Generated PDFs (gitignored)
 ```
 
@@ -228,6 +273,7 @@ output/                     Generated PDFs (gitignored)
 ## Requirements
 
 - Python 3.11+
+- [Supabase CLI](https://supabase.com/docs/guides/cli) — for local auth + PostgreSQL stack
 - Playwright (Chromium) — only needed for Indeed scraping
 - WeasyPrint + system fonts (Cairo, Pango) — see [WeasyPrint docs](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html)
 - Anthropic API key — for LLM scoring modes (`score-offer`, `prepare-candidature`)

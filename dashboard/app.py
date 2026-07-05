@@ -201,6 +201,7 @@ async def index(
             "status": request.app.state.scan_status,
             "result": request.app.state.scan_result,
             "followup_ids": followup_ids,
+            "current_user": current_user,
         },
     )
 
@@ -416,6 +417,7 @@ async def stats_page(
             "max_count": max_count,
             "latest_report_html": latest_report_html,
             "latest_report_date": latest_report_date,
+            "current_user": current_user,
         },
     )
 
@@ -430,7 +432,11 @@ async def profile_page(
     return templates.TemplateResponse(
         request,
         "profile.html",
-        {"profile": profile, "profile_exists": profile_exists},
+        {
+            "profile": profile,
+            "profile_exists": profile_exists,
+            "current_user": current_user,
+        },
     )
 
 

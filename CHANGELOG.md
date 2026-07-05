@@ -8,6 +8,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- `dashboard/templates/base.html` — user email and logout button in nav; `DELETE /auth/session` then redirect to `/login`
+- `dashboard/app.py` — pass `current_user` to index, stats, and profile template contexts so nav can display the email
+
+### Changed
+- (no breaking changes)
+
+---
+
+### Added
 - `dashboard/templates/auth/login.html` — full styled login page: email/password form, Supabase signInWithPassword, POST /auth/session on success, password-reset link trigger
 - `dashboard/templates/auth/signup.html` — full styled signup page: email/password/confirm form, Supabase signUp, redirects to /auth/confirm
 - `dashboard/templates/auth/confirm.html` — static "check your email" page with Inbucket link for local dev

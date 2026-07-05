@@ -35,7 +35,24 @@
     <a href="/" class="{{ 'text-indigo-400 font-semibold border-b border-indigo-400 pb-0.5' if request.url.path == '/' else 'text-slate-400 hover:text-slate-200' }} text-sm transition-colors">Candidatures</a>
     <a href="/stats" class="{{ 'text-indigo-400 font-semibold border-b border-indigo-400 pb-0.5' if request.url.path == '/stats' else 'text-slate-400 hover:text-slate-200' }} text-sm transition-colors">Stats</a>
     <a href="/profile" class="{{ 'text-indigo-400 font-semibold border-b border-indigo-400 pb-0.5' if request.url.path == '/profile' else 'text-slate-400 hover:text-slate-200' }} text-sm transition-colors">Profil</a>
+    <div class="ml-auto flex items-center gap-3">
+      {% if current_user is defined %}
+        <span class="text-xs text-slate-400">{{ current_user.email }}</span>
+        <button
+          onclick="logout()"
+          class="text-xs px-3 py-1 rounded-md text-slate-300 hover:text-white transition-colors"
+          style="background:#2d1f5e;">
+          Déconnexion
+        </button>
+      {% endif %}
+    </div>
   </nav>
+  <script>
+    async function logout() {
+      await fetch('/auth/session', { method: 'DELETE' });
+      window.location.href = '/login';
+    }
+  </script>
   <main class="flex-1 overflow-hidden">
     {% block content %}{% endblock %}
   </main>

@@ -7,6 +7,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+- `dashboard/auth.py` — switched from `Authorization: Bearer` header to httpOnly `session` cookie; auth failures now redirect 302 to `/login` instead of returning 401; added `set_auth_cookies` and `clear_auth_cookies` helpers
+- `tests/test_auth.py` — updated 3 existing tests to expect 302 redirect; added `_request_with_cookie` helper and 3 new cookie-based tests
+- `tests/test_dashboard_app.py` — `test_requires_auth` now uses `follow_redirects=False` and asserts `status_code == 302`
+
 ### Fixed
 - `dashboard/auth.py` — `SUPABASE_JWT_SECRET` now read lazily inside `get_current_user` instead of at module load time; prevents silent bypass (empty-string secret) when `.env` is loaded after import; raises 500 if secret is unconfigured
 

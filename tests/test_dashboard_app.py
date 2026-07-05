@@ -160,9 +160,11 @@ class TestRoot:
         from auth import get_current_user
 
         dashboard_app.app.dependency_overrides.pop(get_current_user, None)
-        c = TestClient(dashboard_app.app, raise_server_exceptions=False)
+        c = TestClient(
+            dashboard_app.app, raise_server_exceptions=False, follow_redirects=False
+        )
         r = c.get("/")
-        assert r.status_code == 401
+        assert r.status_code == 302
 
 
 class TestOfferList:

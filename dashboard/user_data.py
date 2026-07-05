@@ -78,9 +78,12 @@ def _migrate_settings_from_files() -> dict[str, Any] | None:
     scoring = s.get("scoring", {})
     targets = s.get("target_companies", {})
     companies: list[str] = []
-    for v in targets.values():
-        if isinstance(v, list):
-            companies.extend(str(x) for x in v)
+    if isinstance(targets, dict):
+        for v in targets.values():
+            if isinstance(v, list):
+                companies.extend(str(x) for x in v)
+    elif isinstance(targets, list):
+        companies = [str(x) for x in targets]
     return {
         "keywords": list(search.get("keywords", [])),
         "portal_queries": list(search.get("portal_queries", [])),
@@ -106,6 +109,7 @@ def get_profile(conn: psycopg2.extensions.connection, user_id: str) -> dict[str,
     migrated = _migrate_profile_from_files()
     if migrated:
         save_profile(conn, user_id, migrated)
+        conn.commit()
         return migrated
     return _empty_profile()
 
@@ -123,7 +127,6 @@ def save_profile(
             f" ON CONFLICT (user_id) DO UPDATE SET {updates}",
             (user_id, *values),
         )
-    conn.commit()
 
 
 def get_settings(conn: psycopg2.extensions.connection, user_id: str) -> dict[str, Any]:
@@ -142,6 +145,7 @@ def get_settings(conn: psycopg2.extensions.connection, user_id: str) -> dict[str
     migrated = _migrate_settings_from_files()
     if migrated:
         save_settings(conn, user_id, migrated)
+        conn.commit()
         return migrated
     return _empty_settings()
 
@@ -169,4 +173,3 @@ def save_settings(
             f" ON CONFLICT (user_id) DO UPDATE SET {updates}",
             (user_id, *values),
         )
-    conn.commit()

@@ -78,6 +78,7 @@ def test_save_and_get_profile(conn):
         "profile_md": "# Hello",
     }
     user_data.save_profile(conn, USER_A, data)
+    conn.commit()
     result = user_data.get_profile(conn, USER_A)
     assert result["name"] == "Alice"
     assert result["profile_md"] == "# Hello"
@@ -98,6 +99,7 @@ def test_profile_isolated_per_user(conn):
             "profile_md": "",
         },
     )
+    conn.commit()
     result_b = user_data.get_profile(conn, USER_B)
     assert result_b["name"] == ""
 
@@ -121,6 +123,7 @@ def test_save_and_get_settings(conn):
         "follow_up_days": 7,
     }
     user_data.save_settings(conn, USER_A, data)
+    conn.commit()
     result = user_data.get_settings(conn, USER_A)
     assert result["keywords"] == ["AI Engineer", "ML Engineer"]
     assert result["salary_min"] == 40000

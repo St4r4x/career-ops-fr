@@ -8,6 +8,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- `dashboard/env.py` — `load_env()` helper using python-dotenv; loads `.env` in dev, no-op in prod
+- `.env.example` — template for all required env vars (DATABASE_URL, Supabase, Groq)
+- `tests/test_env.py` — test for env var loading from a temp file
 - `config/settings.yaml.example` — template for search keywords, location, salary range, target companies
 - `config/ats_map.yaml.example` — template for direct ATS URLs (Greenhouse/Lever/Ashby)
 - `docs/todo-deployment.md` — SaaS deployment roadmap (auth, multi-tenancy, LLM migration, security)

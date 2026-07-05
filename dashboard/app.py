@@ -14,6 +14,9 @@ import mistune
 
 import profile_parser
 from db import VALID_STATUSES, open_db
+from env import load_env
+
+load_env()
 
 DB_PATH = Path(__file__).parent / "data" / "applications.db"
 TEMPLATES_DIR = Path(__file__).parent / "templates"

@@ -836,6 +836,39 @@ class TestStatsFunnel:
         assert exits[0]["status"] == "Refusée"
 
 
+class TestAuthRoutes:
+    def test_login_page_loads(self) -> None:
+        import app as dashboard_app
+
+        raw = TestClient(dashboard_app.app)
+        r = raw.get("/login", follow_redirects=False)
+        assert r.status_code == 200
+        assert "login" in r.text.lower()
+
+    def test_session_post_sets_cookies(self) -> None:
+        import app as dashboard_app
+
+        raw = TestClient(dashboard_app.app)
+        r = raw.post(
+            "/auth/session",
+            json={
+                "access_token": "dummy-access",
+                "refresh_token": "dummy-refresh",
+            },
+        )
+        assert r.status_code == 200
+        assert "session" in r.cookies
+        assert "refresh" in r.cookies
+
+    def test_session_delete_clears_cookies(self) -> None:
+        import app as dashboard_app
+
+        raw = TestClient(dashboard_app.app)
+        r = raw.delete("/auth/session", follow_redirects=False)
+        assert r.status_code == 302
+        assert r.headers["location"] == "/login"
+
+
 class TestReportWidget:
     def test_shows_no_report_message_when_none_exist(
         self, client: TestClient, tmp_path, monkeypatch

@@ -7,6 +7,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- `dashboard/app.py` — public routes `/login`, `/signup`, `/auth/confirm`, `/auth/reset-password` (no auth dependency)
+- `dashboard/app.py` — `POST /auth/session`: accepts `access_token`/`refresh_token` JSON body, sets httpOnly cookies, returns `{"ok": true}`
+- `dashboard/app.py` — `DELETE /auth/session`: clears auth cookies, redirects 302 to `/login`
+- `dashboard/templates/auth/` — placeholder templates for login, signup, confirm, reset-password (full UI in Task 4)
+- `tests/test_dashboard_app.py` — `TestAuthRoutes`: 3 tests covering login page 200, session cookie set, session cookie clear
+
 ### Changed
 - `dashboard/auth.py` — switched from `Authorization: Bearer` header to httpOnly `session` cookie; auth failures now redirect 302 to `/login` instead of returning 401; added `set_auth_cookies` and `clear_auth_cookies` helpers
 - `tests/test_auth.py` — updated 3 existing tests to expect 302 redirect; added `_request_with_cookie` helper and 3 new cookie-based tests

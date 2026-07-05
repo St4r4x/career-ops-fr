@@ -61,6 +61,7 @@ def upgrade() -> None:
         sa.Column("lang", sa.Text, nullable=False),
         sa.Column("summary", sa.Text, nullable=False, server_default=""),
         sa.PrimaryKeyConstraint("user_id", "lang"),
+        sa.CheckConstraint("lang IN ('fr', 'en')", name="ck_user_cv_meta_lang"),
     )
     op.create_table(
         "user_experience",
@@ -72,6 +73,7 @@ def upgrade() -> None:
         sa.Column("type", sa.Text, nullable=False, server_default=""),
         sa.Column("period", sa.Text, nullable=False, server_default=""),
         sa.Column("sort_order", sa.Integer, nullable=False, server_default="0"),
+        sa.CheckConstraint("lang IN ('fr', 'en')", name="ck_user_experience_lang"),
     )
     op.create_index(
         "ix_user_experience_user_lang", "user_experience", ["user_id", "lang"]
@@ -96,6 +98,7 @@ def upgrade() -> None:
         sa.Column("category", sa.Text, nullable=False),
         sa.Column("skill", sa.Text, nullable=False),
         sa.Column("sort_order", sa.Integer, nullable=False, server_default="0"),
+        sa.CheckConstraint("lang IN ('fr', 'en')", name="ck_user_skills_lang"),
     )
     op.create_index("ix_user_skills_user_lang", "user_skills", ["user_id", "lang"])
     op.create_table(
@@ -114,6 +117,7 @@ def upgrade() -> None:
         sa.Column("degree", sa.Text, nullable=False, server_default=""),
         sa.Column("school", sa.Text, nullable=False, server_default=""),
         sa.Column("year", sa.Integer, nullable=True),
+        sa.CheckConstraint("lang IN ('fr', 'en')", name="ck_user_education_lang"),
     )
 
 
@@ -124,7 +128,6 @@ def downgrade() -> None:
     op.drop_table("user_experience_bullets")
     op.drop_table("user_experience")
     op.drop_table("user_cv_meta")
-    op.drop_index("ix_user_ats_targets_user")
     op.drop_table("user_ats_targets")
     op.drop_table("user_settings")
     op.drop_table("user_profiles")

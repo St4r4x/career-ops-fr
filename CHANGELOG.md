@@ -7,12 +7,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 2026-07-05
+
+### Fixed
+- `dashboard/auth.py` — `set_auth_cookies` now reads `COOKIE_SECURE` env var and sets `secure=True` on both cookies when enabled; defaults to `false` for local HTTP dev
+- `dashboard/auth.py` — extracted `validate_access_token()` helper that decodes and validates a Supabase JWT; raises 401 on invalid token
+- `dashboard/app.py` — `POST /auth/session` now calls `validate_access_token` before setting cookies, preventing session fixation via arbitrary token injection
+- `supabase/config.toml` — `site_url` corrected to `http://localhost:8000`; added `http://localhost:8000` and `http://127.0.0.1:8000` to `additional_redirect_urls` so password-reset redirects work in local dev
+- `.env.example` — added `COOKIE_SECURE` variable (default `false`)
+- `tests/test_dashboard_app.py` — `test_session_post_sets_cookies` now mints a valid JWT instead of sending a dummy string
+
 ### Added
 - `dashboard/templates/base.html` — user email and logout button in nav; `DELETE /auth/session` then redirect to `/login`
 - `dashboard/app.py` — pass `current_user` to index, stats, and profile template contexts so nav can display the email
-
-### Changed
-- (no breaking changes)
 
 ---
 

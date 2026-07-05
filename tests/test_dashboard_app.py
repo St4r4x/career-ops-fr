@@ -8,6 +8,8 @@ import psycopg2
 import pytest
 from fastapi.testclient import TestClient
 
+os.environ.setdefault("SUPABASE_JWT_SECRET", "test-secret-32-chars-minimum-ok!")
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "dashboard"))
 
 PG_URL = os.getenv("DATABASE_URL", "postgresql://career:career@localhost:5432/career")
@@ -848,13 +850,25 @@ class TestAuthRoutes:
     def test_session_post_sets_cookies(self) -> None:
         import app as dashboard_app
 
+        import time
+
+        import jwt as _jwt
+
+        secret = os.environ["SUPABASE_JWT_SECRET"]
+        access_token = _jwt.encode(
+            {
+                "sub": "u1",
+                "email": "t@t.com",
+                "exp": int(time.time()) + 3600,
+                "aud": "authenticated",
+            },
+            secret,
+            algorithm="HS256",
+        )
         raw = TestClient(dashboard_app.app)
         r = raw.post(
             "/auth/session",
-            json={
-                "access_token": "dummy-access",
-                "refresh_token": "dummy-refresh",
-            },
+            json={"access_token": access_token, "refresh_token": "dummy-refresh"},
         )
         assert r.status_code == 200
         assert "session" in r.cookies

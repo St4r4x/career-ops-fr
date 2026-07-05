@@ -13,7 +13,13 @@ from fastapi.templating import Jinja2Templates
 import mistune
 
 import profile_parser
-from auth import CurrentUser, clear_auth_cookies, get_current_user, set_auth_cookies
+from auth import (
+    CurrentUser,
+    clear_auth_cookies,
+    get_current_user,
+    set_auth_cookies,
+    validate_access_token,
+)
 from db import VALID_STATUSES, open_db
 from env import load_env
 
@@ -168,6 +174,7 @@ async def auth_session_create(
     access_token: str = Body(...),
     refresh_token: str = Body(...),
 ) -> JSONResponse:
+    validate_access_token(access_token)
     response = JSONResponse({"ok": True})
     set_auth_cookies(response, access_token, refresh_token)
     return response

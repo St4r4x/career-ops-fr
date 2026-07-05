@@ -8,6 +8,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- `dashboard/db.py` — rewritten for PostgreSQL (psycopg2); all methods now accept `user_id: str` and scope queries to that user; `open_db(url)` replaces `open_db(path)`; `_migrate()` removed (Alembic handles schema)
+- `tests/test_dashboard_db.py` — migrated from SQLite in-memory to PostgreSQL temp table fixture; added user isolation tests
 - `alembic/` — Alembic migration setup; `alembic upgrade head` creates the `applications` table with `user_id VARCHAR(36) NOT NULL` and composite index on `(user_id, status)`
 - `alembic/versions/0001_initial_schema.py` — initial migration: full `applications` schema matching the existing SQLite columns plus `user_id`
 - `dashboard/env.py` — `load_env()` helper using python-dotenv; loads `.env` in dev, no-op in prod

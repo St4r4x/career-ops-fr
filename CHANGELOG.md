@@ -7,6 +7,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- `dashboard/user_data.py` — `get_ats_targets()`, `add_ats_target()`, `delete_ats_target()` functions for ATS target CRUD with per-user isolation and `ats_map.yaml` file migration
+- `tests/test_user_data.py` — 5 tests covering ATS targets (empty list, add/get, delete, wrong user, per-user isolation)
+
 ## 2026-07-05
 
 ### Changed

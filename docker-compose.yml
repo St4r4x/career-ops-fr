@@ -1,20 +1,4 @@
 services:
-  postgres:
-    image: postgres:16
-    environment:
-      POSTGRES_USER: career
-      POSTGRES_PASSWORD: career
-      POSTGRES_DB: career
-    ports:
-      - "127.0.0.1:5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U career"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   dashboard:
     build: .
     command: ["dashboard"]
@@ -25,11 +9,10 @@ services:
       - ./output:/app/output
       - ./config:/app/config:ro
     env_file: .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
-      - DATABASE_URL=postgresql://career:career@postgres:5432/career
-    depends_on:
-      postgres:
-        condition: service_healthy
+      - DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:54322/postgres
     restart: unless-stopped
 
   pipeline:
@@ -40,13 +23,9 @@ services:
       - ./output:/app/output
       - ./config:/app/config:ro
     env_file: .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
-      - DATABASE_URL=postgresql://career:career@postgres:5432/career
-    depends_on:
-      postgres:
-        condition: service_healthy
+      - DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:54322/postgres
     profiles:
       - manual
-
-volumes:
-  postgres_data:

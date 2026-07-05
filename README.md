@@ -96,6 +96,8 @@ cp config/settings.yaml.example config/settings.yaml # search keywords, location
 cp config/ats_map.yaml.example  config/ats_map.yaml  # direct ATS URLs to monitor (Greenhouse/Lever/Ashby)
 ```
 
+> **Note:** `settings.yaml` and `ats_map.yaml` are read once on first login and migrated into the database. After that, edit them via the **Paramètres** page in the dashboard (`/settings`). The files serve as the initial seed only.
+
 ### 6. Start the dashboard
 
 ```bash
@@ -130,7 +132,8 @@ To bypass auth entirely during development, set `DEV_AUTO_LOGIN=true` in `.env`.
 |-------|-------------|
 | `/` | Candidatures — offer list with filters, notes, status tracking, scan button; amber bandeau when applications are overdue for follow-up (> 7 days since send) |
 | `/stats` | Pipeline statistics — response rate, interview count, funnel with conversion rates, daily report widget |
-| `/profile` | Profile editor — edit `profile.md` and `contact.yaml` directly from the browser |
+| `/profile` | Profile editor — contact info, profile text, and CV editor (FR/EN tabs) backed by DB |
+| `/settings` | Preferences — search keywords, salary range, target companies, ATS targets CRUD |
 
 **Offer detail panel:**
 - Change status (À envoyer → Envoyée → Entretien RH → …)
@@ -235,8 +238,8 @@ The dashboard container connects to the host-side Supabase CLI stack via `host.d
 | `config/contact.yaml` | ❌ gitignored | Name, email, phone, LinkedIn, GitHub |
 | `config/profile.md` | ❌ gitignored | Full profile used by LLM scoring modes |
 | `config/cv.yaml` | ❌ gitignored | CV content: experience (with stack tags), skill_categories, certifications, education, hobbies |
-| `config/settings.yaml` | ✅ | Search keywords, salary range, scoring thresholds, target companies |
-| `config/ats_map.yaml` | ✅ | Direct ATS URLs for Greenhouse / Lever / Ashby companies |
+| `config/settings.yaml` | ✅ | Search keywords, salary range, scoring thresholds, target companies — read once on first login, then stored in DB |
+| `config/ats_map.yaml` | ✅ | Direct ATS URLs for Greenhouse / Lever / Ashby companies — read once on first login, then stored in DB |
 | `portals/fr/*.yaml` | ✅ | Portal scraper YAML configs (selectors, pagination) |
 | `supabase/` | ✅ | Supabase CLI local config (`config.toml`) |
 
@@ -263,10 +266,11 @@ scripts/
   models.py                 Shared data models
 
 dashboard/
-  app.py                    FastAPI routes (/, /stats, /profile, /scan/*, /offers/*, /login, /signup, /auth/*)
+  app.py                    FastAPI routes (/, /stats, /profile, /settings, /scan/*, /offers/*, /login, /signup, /auth/*)
   auth.py                   Supabase JWT validation (JWKS/ES256), cookie helpers, DEV_AUTO_LOGIN bypass
   db.py                     PostgreSQL persistence layer (psycopg2, all queries scoped by user_id)
-  profile_parser.py         Load/save profile.md and contact.yaml
+  user_data.py              Per-user data access layer (profile, settings, ATS targets, CV tables)
+  profile_parser.py         Profile load/save — delegates to user_data (DB); file fallback for migration
   templates/
     base.html               Layout with nav (user email + logout)
     auth/                   Login, signup, confirm, reset-password pages (supabase-js v2)

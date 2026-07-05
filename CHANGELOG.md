@@ -9,154 +9,94 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## 2026-07-05
 
-### Changed
-- `scripts/pre_filter.py` — `load_settings()` accepts optional `user_id`; loads from DB via `user_data.get_settings` when provided, falls back to `settings.yaml`
-- `scripts/scan_ats.py` — `scan_ats()` accepts optional `user_id`; loads ATS targets from DB via `user_data.get_ats_targets` when provided, falls back to `ats_map.yaml`
-- `scripts/import_offers.py` — `_run_pipeline()` accepts `user_id` and forwards it to `scan_ats()`; `main()` passes `args.user_id` to both `load_settings()` and `_run_pipeline()`
-- `scripts/rescore.py` — `rescore()` accepts `user_id` and forwards to `load_settings()`; `main()` adds `--user-id` argparse arg
-- `scripts/daily_report.py` — `main()` adds `--user-id` argparse arg and passes it to `load_settings()`
-- `dashboard/app.py` — `_run_scan_task()` passes `user_id` to both `load_settings()` and `_run_pipeline()` so web-triggered scans use per-user settings and ATS targets
-
-
-
 ### Added
-- `dashboard/templates/profile.html` — replaced file-based shim sections with DB-backed CV sections; added FR/EN language tab switcher; removed Projets personnels section (no DB table)
-- `dashboard/templates/partials/profile_text.html` — updated to use `#section-text` HTMX target and 8-row monospace textarea
+- `alembic/versions/0002_user_profile_settings.py` — migration for 9 new user profile/settings/CV tables (`user_profiles`, `user_settings`, `user_ats_targets`, `user_cv_meta`, `user_experience`, `user_experience_bullets`, `user_skills`, `user_certifications`, `user_education`)
+- `dashboard/user_data.py` — `get_profile()`, `save_profile()`, `get_settings()`, `save_settings()` functions; file-based auto-migration fallback reads from `config/contact.yaml`, `config/profile.md`, `config/settings.yaml`
+- `dashboard/user_data.py` — `get_ats_targets()`, `add_ats_target()`, `delete_ats_target()` for ATS target CRUD with per-user isolation and `ats_map.yaml` file migration
+- `dashboard/user_data.py` — `get_cv()`, `save_cv_meta()`, `save_experience()`, `save_skills()`, `save_certifications()`, `save_education()` for CV data access with per-user/per-lang isolation and `cv.yaml` file migration; `_migrate_cv_from_files()` helper reads `config/cv.yaml` and seeds DB on first access
+- `dashboard/user_data.py` — `delete_experience(conn, user_id, exp_id)` to delete a single CV experience row and its bullets
+- `dashboard/profile_parser.py` — `load_profile(conn, user_id)` and `save_profile(conn, user_id, data)` now delegate to `user_data`; file-based helpers (`_parse_contact`, `_parse_profile_md`, `_serialize_profile_md`, etc.) kept in place for `user_data` migration path
+- `dashboard/app.py` — new CV routes: `POST /profile/cv/meta`, `POST /profile/cv/experience`, `DELETE /profile/cv/experience/{exp_id}`, `POST /profile/cv/skills`, `POST /profile/cv/certifications`, `POST /profile/cv/education`
+- `dashboard/app.py` — new settings routes: `GET /settings`, `POST /settings/search`, `POST /settings/ats`, `DELETE /settings/ats/{target_id}`
+- `dashboard/app.py` — public auth routes `/login`, `/signup`, `/auth/confirm`, `/auth/reset-password` (no auth dependency); `POST /auth/session` accepts `access_token`/`refresh_token` JSON body, sets httpOnly cookies; `DELETE /auth/session` clears auth cookies and redirects to `/login`
+- `dashboard/app.py` — pass `current_user` to index, stats, and profile template contexts so nav can display the email
+- `dashboard/templates/settings.html` — full settings page with search prefs and ATS targets sections
+- `dashboard/templates/partials/settings_search.html` — HTMX partial for search preferences form
+- `dashboard/templates/partials/settings_ats.html` — HTMX partial for ATS targets table with delete
+- `dashboard/templates/partials/profile_text.html` — partial for `POST /profile/text` route; uses `#section-text` HTMX target and 8-row monospace textarea
 - `dashboard/templates/partials/profile_cv_meta.html` — summary textarea form posting to `/profile/cv/meta` with per-lang HTMX target
 - `dashboard/templates/partials/profile_cv_experience.html` — inline-editable experience cards with bullet normalization (DB `{id,text}` → plain string for save); JS `syncExpData` serializes to hidden `data` field on submit
 - `dashboard/templates/partials/profile_cv_skills.html` — category-grouped skill inputs; JS `syncSkillsData` serializes on submit
 - `dashboard/templates/partials/profile_cv_certifications.html` — certification rows (name, issuer, year); JS `syncCertsData` serializes on submit
 - `dashboard/templates/partials/profile_cv_education.html` — education rows (degree, school, year); JS `syncEduData` serializes on submit
-- `dashboard/app.py` — four new routes: `GET /settings`, `POST /settings/search`, `POST /settings/ats`, `DELETE /settings/ats/{target_id}`
-- `dashboard/templates/settings.html` — full settings page with search prefs and ATS targets sections
-- `dashboard/templates/partials/settings_search.html` — HTMX partial for search preferences form
-- `dashboard/templates/partials/settings_ats.html` — HTMX partial for ATS targets table
-- `dashboard/templates/base.html` — added Paramètres nav link
-- `dashboard/templates/partials/profile_text.html` — partial for `POST /profile/text` route
-- `tests/test_dashboard_app.py` — `TestSettings` class with 5 tests covering auth, page load, search save, ATS add/delete
-
-### Fixed
-- `dashboard/user_data.py` — `delete_experience`: bullet delete now scoped to owned experiences via subquery, preventing cross-user data deletion
-- `dashboard/app.py` — renamed `/profile/summary` route to `/profile/text` (`profile_save_text`), form field from `summary` to `profile_md`
-- `dashboard/app.py` — removed four legacy silent-dead-write routes: `POST /profile/experience`, `/profile/skills`, `/profile/education`, `/profile/projects`
-- `tests/test_profile_routes.py` — updated `TestSaveSummary` → `TestSaveText` for renamed route; removed tests for deleted legacy routes
-- `tests/test_profile_parser.py` — removed unused `_make_conn` helper
-
----
-
-## 2026-07-05
-
-### Added
-- `dashboard/user_data.py` — `delete_experience(conn, user_id, exp_id)` to delete a single CV experience row and its bullets
-- `dashboard/profile_parser.py` — `load_profile(conn, user_id)` and `save_profile(conn, user_id, data)` now delegate to `user_data`; file-based helpers (`_parse_contact`, `_parse_profile_md`, `_serialize_profile_md`, etc.) kept in place for `user_data` migration path
-- `dashboard/app.py` — new CV routes: `POST /profile/cv/meta`, `POST /profile/cv/experience`, `DELETE /profile/cv/experience/{exp_id}`, `POST /profile/cv/skills`, `POST /profile/cv/certifications`, `POST /profile/cv/education`
-- `dashboard/templates/partials/profile_cv_meta.html`, `profile_cv_experience.html`, `profile_cv_skills.html`, `profile_cv_certifications.html`, `profile_cv_education.html` — stub partials for CV routes (full UI in Task 7)
-- `tests/test_profile_routes.py` — `TestCvRoutes` covering all 6 new CV endpoints
-- `tests/test_profile_parser.py` — `test_load_profile_db`, `test_save_profile_db` covering DB-backed load/save
-
-### Changed
-- `dashboard/app.py` — all profile routes (`GET /profile`, `POST /profile/contact`, `POST /profile/summary`, `POST /profile/experience`, `POST /profile/skills`, `POST /profile/education`, `POST /profile/projects`) now use `request.app.state.db.conn` and `current_user["sub"]`; `OSError` try/except removed (no longer writing files); `GET /profile` now fetches `cv` and `cv_en` from DB
-- `dashboard/templates/profile.html` — removed stale `profile_exists` warning banner (file-based check no longer relevant)
-- `tests/test_profile_routes.py` — fixture replaced: uses `MagicMock` conn instead of real psycopg2 connection; monkeypatches `profile_parser.load_profile`/`save_profile` and `user_data.*` functions instead of file path attributes
-
-### Added
-
-- `dashboard/user_data.py` — `get_cv()`, `save_cv_meta()`, `save_experience()`, `save_skills()`, `save_certifications()`, `save_education()` for CV data access with per-user/per-lang isolation and `cv.yaml` file migration
-- `dashboard/user_data.py` — `_migrate_cv_from_files()` helper reads `config/cv.yaml` and seeds DB on first access
-- `tests/test_user_data.py` — 7 tests covering CV (empty state, meta save/get, experience with bullets, replace existing, skills, certifications, education)
-- `dashboard/user_data.py` — `get_ats_targets()`, `add_ats_target()`, `delete_ats_target()` functions for ATS target CRUD with per-user isolation and `ats_map.yaml` file migration
-- `tests/test_user_data.py` — 5 tests covering ATS targets (empty list, add/get, delete, wrong user, per-user isolation)
-
-## 2026-07-05
-
-### Changed
-- `README.md` — add v0.2 badge, "Run the app" quick-launch section at top (supabase start → docker compose up → stop sequence); full rewrite: Supabase CLI setup, auth section (routes, Inbucket, DEV_AUTO_LOGIN), updated env vars table, Docker note about host.docker.internal, updated project structure (auth.py, supabase/, PostgreSQL db.py)
-
-### Fixed
-- `dashboard/app.py` / `docker-compose.yml` — split `SUPABASE_URL` (container→Supabase for JWKS) from `SUPABASE_PUBLIC_URL` (browser→Supabase for auth JS); fixes "Failed to fetch" on login/signup when running in Docker
-
-### Changed
-- `dashboard/auth.py` — cache JWKS client with `_jwks_unavailable` flag to skip repeated failed fetches; collapse redundant `ExpiredSignatureError` branch into `InvalidTokenError`; replace per-call `os.getenv("DEV_AUTO_LOGIN")` with module-level constant
-- `dashboard/app.py` — move `supabase_url`/`supabase_anon_key` to `templates.env.globals`; drop per-route context injection
-- `tests/test_auth.py` — fix `test_get_current_user_expired_token` and `test_get_current_user_wrong_secret` to use cookie requests; remove duplicate `test_get_current_user_valid_cookie`
-
-### Fixed
-- `dashboard/auth.py` — switched JWT validation to JWKS (ES256) via `PyJWKClient`; Supabase CLI recent versions sign tokens with ES256 not HS256; HS256 fallback kept for tests
-- `dashboard/auth.py` — removed `_ALGORITHM`/`_AUDIENCE` module constants; validation now dynamic via `_decode_token()`
-- `requirements.txt` — added `cryptography==42.0.8` (required by PyJWT for ES256 support)
-- `docker-compose.yml` — override `SUPABASE_URL` to `http://host.docker.internal:54321` so the container can reach the JWKS endpoint on the host
-- `docker-compose.yml` — mount `dashboard/templates` as a volume so template changes don't require a full image rebuild
-- `dashboard/templates/auth/login.html` — added defensive init guard, loading state, and precise error messages
-- `dashboard/templates/auth/signup.html` — added defensive init guard, loading state, precise error messages, and `name`/`autocomplete` attributes on inputs
-
-### Fixed
-- `dashboard/auth.py` — `set_auth_cookies` now reads `COOKIE_SECURE` env var and sets `secure=True` on both cookies when enabled; defaults to `false` for local HTTP dev
-- `dashboard/auth.py` — extracted `validate_access_token()` helper that decodes and validates a Supabase JWT; raises 401 on invalid token
-- `dashboard/app.py` — `POST /auth/session` now calls `validate_access_token` before setting cookies, preventing session fixation via arbitrary token injection
-- `supabase/config.toml` — `site_url` corrected to `http://localhost:8000`; added `http://localhost:8000` and `http://127.0.0.1:8000` to `additional_redirect_urls` so password-reset redirects work in local dev
-- `.env.example` — added `COOKIE_SECURE` variable (default `false`)
-- `tests/test_dashboard_app.py` — `test_session_post_sets_cookies` now mints a valid JWT instead of sending a dummy string
-
-### Added
-- `dashboard/user_data.py` — profile and settings module with `get_profile()`, `save_profile()`, `get_settings()`, `save_settings()` functions; file-based auto-migration fallback reads from `config/contact.yaml`, `config/profile.md`, `config/settings.yaml`
-- `tests/test_user_data.py` — test suite for profile and settings (5 tests: empty defaults, save/get roundtrip, per-user isolation, array handling)
-- `dashboard/templates/base.html` — user email and logout button in nav; `DELETE /auth/session` then redirect to `/login`
-- `dashboard/app.py` — pass `current_user` to index, stats, and profile template contexts so nav can display the email
-
----
-
-### Added
 - `dashboard/templates/auth/login.html` — full styled login page: email/password form, Supabase signInWithPassword, POST /auth/session on success, password-reset link trigger
 - `dashboard/templates/auth/signup.html` — full styled signup page: email/password/confirm form, Supabase signUp, redirects to /auth/confirm
 - `dashboard/templates/auth/confirm.html` — static "check your email" page with Inbucket link for local dev
 - `dashboard/templates/auth/reset-password.html` — new password form using Supabase updateUser after PASSWORD_RECOVERY event
-
-### Changed
-- `dashboard/app.py` — auth routes now pass `supabase_url` and `supabase_anon_key` context vars to login/signup/reset-password templates; added `_SUPABASE_URL` / `_SUPABASE_ANON_KEY` module-level constants from env
-
----
-
-### Added (Task 3)
-- `dashboard/app.py` — public routes `/login`, `/signup`, `/auth/confirm`, `/auth/reset-password` (no auth dependency)
-- `dashboard/app.py` — `POST /auth/session`: accepts `access_token`/`refresh_token` JSON body, sets httpOnly cookies, returns `{"ok": true}`
-- `dashboard/app.py` — `DELETE /auth/session`: clears auth cookies, redirects 302 to `/login`
-- `dashboard/templates/auth/` — placeholder templates for login, signup, confirm, reset-password (full UI in Task 4)
-- `tests/test_dashboard_app.py` — `TestAuthRoutes`: 3 tests covering login page 200, session cookie set, session cookie clear
-
-### Changed
-- `dashboard/auth.py` — switched from `Authorization: Bearer` header to httpOnly `session` cookie; auth failures now redirect 302 to `/login` instead of returning 401; added `set_auth_cookies` and `clear_auth_cookies` helpers
-- `tests/test_auth.py` — updated 3 existing tests to expect 302 redirect; added `_request_with_cookie` helper and 3 new cookie-based tests
-- `tests/test_dashboard_app.py` — `test_requires_auth` now uses `follow_redirects=False` and asserts `status_code == 302`
-
-### Fixed
-- `dashboard/auth.py` — `SUPABASE_JWT_SECRET` now read lazily inside `get_current_user` instead of at module load time; prevents silent bypass (empty-string secret) when `.env` is loaded after import; raises 500 if secret is unconfigured
-
-### Added
+- `dashboard/templates/base.html` — user email and logout button in nav (`DELETE /auth/session` then redirect to `/login`); added Paramètres nav link
 - `dashboard/auth.py` — Supabase JWT verification dependency (`get_current_user`); raises 401 on missing/expired/invalid token
-- `tests/test_auth.py` — 4 tests covering valid token, missing token, expired token, wrong secret
 - `dashboard/db.py` — rewritten for PostgreSQL (psycopg2); all methods now accept `user_id: str` and scope queries to that user; `open_db(url)` replaces `open_db(path)`; `_migrate()` removed (Alembic handles schema)
-- `tests/test_dashboard_db.py` — migrated from SQLite in-memory to PostgreSQL temp table fixture; added user isolation tests
+- `dashboard/env.py` — `load_env()` helper using python-dotenv; loads `.env` in dev, no-op in prod
 - `alembic/` — Alembic migration setup; `alembic upgrade head` creates the `applications` table with `user_id VARCHAR(36) NOT NULL` and composite index on `(user_id, status)`
 - `alembic/versions/0001_initial_schema.py` — initial migration: full `applications` schema matching the existing SQLite columns plus `user_id`
-- `dashboard/env.py` — `load_env()` helper using python-dotenv; loads `.env` in dev, no-op in prod
 - `.env.example` — template for all required env vars (DATABASE_URL, Supabase, Groq)
-- `tests/test_env.py` — test for env var loading from a temp file
 - `config/settings.yaml.example` — template for search keywords, location, salary range, target companies
 - `config/ats_map.yaml.example` — template for direct ATS URLs (Greenhouse/Lever/Ashby)
 - `docs/todo-deployment.md` — SaaS deployment roadmap (auth, multi-tenancy, LLM migration, security)
+- `tests/test_user_data.py` — profile/settings suite (5 tests: empty defaults, save/get roundtrip, per-user isolation, array handling); CV suite (7 tests: empty state, meta save/get, experience with bullets, replace existing, skills, certifications, education); ATS targets suite (5 tests: empty list, add/get, delete, wrong user, per-user isolation)
+- `tests/test_profile_routes.py` — `TestCvRoutes` covering all 6 new CV endpoints
+- `tests/test_profile_parser.py` — `test_load_profile_db`, `test_save_profile_db` covering DB-backed load/save
+- `tests/test_dashboard_app.py` — `TestSettings` (5 tests: auth, page load, search save, ATS add/delete); `TestAuthRoutes` (3 tests: login page 200, session cookie set, session cookie clear)
+- `tests/test_auth.py` — 4 tests covering valid token, missing token, expired token, wrong secret
+- `tests/test_dashboard_db.py` — migrated from SQLite in-memory to PostgreSQL temp table fixture; added user isolation tests
+- `tests/test_env.py` — test for env var loading from a temp file
+- `tests/test_import_offers.py` — migrated to PostgreSQL temp table fixture; `mock_pg_connect` fixture redirects `psycopg2.connect` to the test connection; added user-scoping test
 
 ### Changed
-- `docker-compose.yml` — override `DATABASE_URL` to `postgres:5432` in dashboard and pipeline services (env_file uses localhost, which is wrong inside Docker)
-- `scripts/import_offers.py` — replace sqlite3 with psycopg2; `import_offers`, `import_offers_with_liveness`, and `expire_stale_offers` now accept `user_id: str` instead of `db_path: Path`; CLI requires `--user-id UUID`; `_DATABASE_URL` read from env
-- `tests/test_import_offers.py` — migrated to PostgreSQL temp table fixture; `mock_pg_connect` fixture redirects `psycopg2.connect` to the test connection; added user-scoping test
-- `dashboard/app.py` — rewritten to use PostgreSQL via `open_db(DATABASE_URL)`; every route now has `Depends(get_current_user)` and passes `user_id` to all DB calls; `_run_scan_task` and `_start_scan` accept explicit `user_id`
-- `tests/test_dashboard_app.py` — migrated from SQLite in-memory to PostgreSQL temp table fixture; auth dependency mocked via `dependency_overrides[get_current_user]`; all DB calls updated with `user_id`
-- `tests/test_profile_routes.py` — fixture migrated from SQLite to PostgreSQL temp table; auth dependency mocked
-- `docker-compose.yml` — add postgres:16 service with healthcheck; dashboard/pipeline now depend on it; remove SQLite data volume
-- `scripts/import_offers.py` — call load_dotenv() at startup so CLI usage picks up .env
-- `tests/test_env.py` — fix stdlib import order (os → pathlib → sys) and add type hints to test signature
+- `dashboard/profile_parser.py` — `load_profile`/`save_profile` require `conn` and `user_id` params; delegates to `user_data` (DB) instead of reading YAML/Markdown files directly
+- `dashboard/app.py` — all profile routes now use `request.app.state.db.conn` and `current_user["sub"]`; `OSError` try/except removed (no longer writing files); `GET /profile` now fetches `cv` and `cv_en` from DB
+- `dashboard/app.py` — `_run_scan_task()` passes `user_id` to both `load_settings()` and `_run_pipeline()` so web-triggered scans use per-user settings and ATS targets
+- `dashboard/app.py` — auth routes pass `supabase_url`/`supabase_anon_key` to templates; both moved to `templates.env.globals`; per-route context injection dropped
+- `dashboard/app.py` — rewritten to use PostgreSQL via `open_db(DATABASE_URL)`; every route has `Depends(get_current_user)` and passes `user_id` to all DB calls
+- `dashboard/auth.py` — switched from `Authorization: Bearer` header to httpOnly `session` cookie; auth failures redirect 302 to `/login` instead of returning 401; added `set_auth_cookies` and `clear_auth_cookies` helpers
+- `dashboard/auth.py` — cache JWKS client with `_jwks_unavailable` flag; collapse redundant `ExpiredSignatureError` branch into `InvalidTokenError`; replace per-call `os.getenv("DEV_AUTO_LOGIN")` with module-level constant
+- `dashboard/templates/profile.html` — DB-backed CV sections with FR/EN language tab switcher; removed Projets personnels section and stale `profile_exists` warning banner
+- `scripts/pre_filter.py` — `load_settings()` accepts optional `user_id`; loads from DB via `user_data.get_settings` when provided, falls back to `settings.yaml`
+- `scripts/scan_ats.py` — `scan_ats()` accepts optional `user_id`; loads ATS targets from DB via `user_data.get_ats_targets` when provided, falls back to `ats_map.yaml`
+- `scripts/import_offers.py` — replace sqlite3 with psycopg2; `import_offers`, `import_offers_with_liveness`, `expire_stale_offers` accept `user_id: str`; `_run_pipeline()` accepts and forwards `user_id`; CLI requires `--user-id UUID`
+- `scripts/rescore.py` — `rescore()` accepts `user_id` and forwards to `load_settings()`; `main()` adds `--user-id` argparse arg
+- `scripts/daily_report.py` — `main()` adds `--user-id` argparse arg and passes it to `load_settings()`
+- `docker-compose.yml` — add postgres:16 service with healthcheck; dashboard/pipeline depend on it; override `DATABASE_URL` to `postgres:5432`; remove SQLite data volume
 - `.gitignore` — untrack personal config files: `config/settings.yaml`, `config/ats_map.yaml`, `config/cover-letter-*.json`
-- `README.md` — add `settings.yaml` and `ats_map.yaml` to quick start setup steps
+- `README.md` — add v0.2 badge, "Run the app" quick-launch section; full rewrite with Supabase CLI setup, auth section, updated env vars table, Docker note, updated project structure
+- `tests/test_auth.py` — updated existing tests to expect 302 redirect; added `_request_with_cookie` helper and cookie-based tests; fix expired/wrong-secret tests to use cookie requests; remove duplicate `test_get_current_user_valid_cookie`
+- `tests/test_dashboard_app.py` — migrated to PostgreSQL temp table fixture; auth dependency mocked via `dependency_overrides`; `test_requires_auth` uses `follow_redirects=False` and asserts `status_code == 302`
+- `tests/test_profile_routes.py` — migrated fixture to PostgreSQL; monkeypatches `profile_parser.load_profile`/`save_profile` and `user_data.*` functions
+- `tests/test_env.py` — fix stdlib import order (os → pathlib → sys) and add type hints
+
+### Fixed
+- `dashboard/user_data.py` — `delete_experience`: bullet delete scoped to owned experiences via subquery, preventing cross-user data deletion
+- `dashboard/app.py` — renamed `/profile/summary` route to `/profile/text` (`profile_save_text`), form field from `summary` to `profile_md`
+- `dashboard/app.py` — removed four legacy silent-dead-write routes: `POST /profile/experience`, `/profile/skills`, `/profile/education`, `/profile/projects`
+- `dashboard/app.py` / `docker-compose.yml` — split `SUPABASE_URL` (container→Supabase for JWKS) from `SUPABASE_PUBLIC_URL` (browser→Supabase for auth JS); fixes "Failed to fetch" on login/signup when running in Docker
+- `dashboard/app.py` — `POST /auth/session` now calls `validate_access_token` before setting cookies, preventing session fixation via arbitrary token injection
+- `dashboard/auth.py` — switched JWT validation to JWKS (ES256) via `PyJWKClient`; Supabase CLI recent versions sign tokens with ES256 not HS256; HS256 fallback kept for tests
+- `dashboard/auth.py` — removed `_ALGORITHM`/`_AUDIENCE` module constants; validation now dynamic via `_decode_token()`
+- `dashboard/auth.py` — `set_auth_cookies` reads `COOKIE_SECURE` env var; `secure=True` when enabled, defaults to `false` for local HTTP dev
+- `dashboard/auth.py` — extracted `validate_access_token()` helper; raises 401 on invalid token
+- `dashboard/auth.py` — `SUPABASE_JWT_SECRET` now read lazily inside `get_current_user`; raises 500 if secret is unconfigured
+- `requirements.txt` — added `cryptography==42.0.8` (required by PyJWT for ES256 support)
+- `docker-compose.yml` — override `SUPABASE_URL` to `http://host.docker.internal:54321` for JWKS endpoint access from container
+- `docker-compose.yml` — mount `dashboard/templates` as a volume so template changes don't require a full image rebuild
+- `dashboard/templates/auth/login.html` — added defensive init guard, loading state, and precise error messages
+- `dashboard/templates/auth/signup.html` — added defensive init guard, loading state, precise error messages, and `name`/`autocomplete` attributes
+- `supabase/config.toml` — `site_url` corrected to `http://localhost:8000`; added `http://localhost:8000` and `http://127.0.0.1:8000` to `additional_redirect_urls` so password-reset redirects work in local dev
+- `.env.example` — added `COOKIE_SECURE` variable (default `false`)
+- `tests/test_dashboard_app.py` — `test_session_post_sets_cookies` now mints a valid JWT instead of sending a dummy string
+- `tests/test_profile_routes.py` — updated `TestSaveSummary` → `TestSaveText` for renamed route; removed tests for deleted legacy routes
+- `tests/test_profile_parser.py` — removed unused `_make_conn` helper
+
+---
 
 ## [0.10.0] — 2026-07-03
 

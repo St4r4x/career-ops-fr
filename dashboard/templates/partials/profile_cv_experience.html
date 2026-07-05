@@ -7,6 +7,13 @@
   <div id="exp-list-{{ lang }}" class="space-y-3 mb-3">
     {% for exp in cv.experience %}
     <div class="pf-card">
+      <div class="flex justify-end mb-1">
+        <button type="button" class="pf-del-btn"
+                hx-delete="/profile/cv/experience/{{ exp.id }}"
+                hx-target="#section-cv-experience-{{ lang }}"
+                hx-swap="innerHTML"
+                hx-confirm="Supprimer cette expérience ?">Supprimer</button>
+      </div>
       <div class="grid grid-cols-2 gap-2 mb-2">
         <div>
           <label class="pf-label">Titre</label>

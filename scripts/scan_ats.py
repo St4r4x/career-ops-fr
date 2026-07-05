@@ -19,10 +19,16 @@ from html import unescape
 from pathlib import Path
 from typing import Optional
 
+import sys as _sys
+
 import httpx
 import yaml
 
 from scripts.models import RawOffer
+
+_DASHBOARD_PATH = str(Path(__file__).parent.parent / "dashboard")
+if _DASHBOARD_PATH not in _sys.path:
+    _sys.path.insert(0, _DASHBOARD_PATH)
 
 logger = logging.getLogger(__name__)
 
@@ -259,11 +265,9 @@ async def scan_ats(
     if user_id is not None:
         try:
             import os
-            import sys
 
             import psycopg2
 
-            sys.path.insert(0, str(Path(__file__).parent.parent / "dashboard"))
             import user_data as _ud
 
             db_url = os.getenv(

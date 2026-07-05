@@ -397,6 +397,8 @@ def save_experience(
             (user_id, lang),
         )
         for entry in entries:
+            if not isinstance(entry, dict):
+                continue
             cur.execute(
                 "INSERT INTO user_experience (user_id, lang, title, company, type, period, sort_order)"
                 " VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
@@ -430,6 +432,8 @@ def save_skills(
             (user_id, lang),
         )
         for entry in entries:
+            if not isinstance(entry, dict):
+                continue
             cur.execute(
                 "INSERT INTO user_skills (user_id, lang, category, skill, sort_order) VALUES (%s, %s, %s, %s, %s)",
                 (
@@ -448,6 +452,8 @@ def save_certifications(
     with conn.cursor() as cur:
         cur.execute("DELETE FROM user_certifications WHERE user_id = %s", (user_id,))
         for entry in entries:
+            if not isinstance(entry, dict):
+                continue
             cur.execute(
                 "INSERT INTO user_certifications (user_id, name, issuer, year) VALUES (%s, %s, %s, %s)",
                 (user_id, entry["name"], entry.get("issuer", ""), entry.get("year")),
@@ -483,6 +489,8 @@ def save_education(
             (user_id, lang),
         )
         for entry in entries:
+            if not isinstance(entry, dict):
+                continue
             cur.execute(
                 "INSERT INTO user_education (user_id, lang, degree, school, year) VALUES (%s, %s, %s, %s, %s)",
                 (

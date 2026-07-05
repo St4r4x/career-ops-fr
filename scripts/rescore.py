@@ -1,15 +1,21 @@
 """Rescore all existing DB offers using the updated score_offer() function.
 
 Usage:
-    python -m scripts.rescore [--dry-run] [--db PATH]
+    python -m scripts.rescore --user-id <UUID> [--dry-run]
 """
 
 from __future__ import annotations
 
 import argparse
 import logging
-import sqlite3
+import os
 from pathlib import Path
+
+import psycopg2
+import psycopg2.extensions
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).parent.parent / ".env", override=False)
 
 from scripts.import_offers import score_to_grade
 from scripts.models import RawOffer
@@ -17,7 +23,9 @@ from scripts.pre_filter import load_settings, score_offer
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_DB = Path(__file__).parent.parent / "dashboard" / "data" / "applications.db"
+_DATABASE_URL = os.getenv(
+    "DATABASE_URL", "postgresql://career:career@localhost:5432/career"
+)
 
 
 def _infer_portal(url: str) -> str:
@@ -32,13 +40,16 @@ def _infer_portal(url: str) -> str:
 
 
 def rescore(
-    conn: sqlite3.Connection, dry_run: bool = False, user_id: str | None = None
+    conn: psycopg2.extensions.connection, user_id: str, dry_run: bool = False
 ) -> dict:
     settings = load_settings(user_id=user_id)
-    rows = conn.execute(
-        "SELECT id, company, role, offer_url, score_grade, score_value, description "
-        "FROM applications"
-    ).fetchall()
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id, company, role, offer_url, score_grade, score_value, description"
+            " FROM applications WHERE user_id = %s AND status = 'À envoyer'",
+            (user_id,),
+        )
+        rows = cur.fetchall()
 
     updates: list[tuple[str, float, int]] = []
     summary: dict[str, int] = {"total": len(rows), "changed": 0}
@@ -56,7 +67,7 @@ def rescore(
         )
         new_score, _ = score_offer(offer, settings)
         new_grade = score_to_grade(new_score)
-        if new_grade != old_grade or abs(new_score - old_score) > 0.001:
+        if new_grade != old_grade or abs(new_score - (old_score or 0)) > 0.001:
             updates.append((new_grade, new_score, id_))
             summary["changed"] += 1
             logger.info(
@@ -70,10 +81,13 @@ def rescore(
             )
 
     if not dry_run and updates:
-        conn.executemany(
-            "UPDATE applications SET score_grade = ?, score_value = ? WHERE id = ?",
-            updates,
-        )
+        with conn.cursor() as cur:
+            for new_grade, new_score, id_ in updates:
+                cur.execute(
+                    "UPDATE applications SET score_grade = %s, score_value = %s"
+                    " WHERE id = %s AND user_id = %s",
+                    (new_grade, new_score, id_, user_id),
+                )
         conn.commit()
 
     return summary
@@ -89,21 +103,22 @@ def main() -> None:
     parser.add_argument(
         "--dry-run", action="store_true", help="Print changes without writing"
     )
-    parser.add_argument("--db", default=str(_DEFAULT_DB), metavar="PATH")
     parser.add_argument(
         "--user-id",
-        default=None,
+        required=True,
         metavar="UUID",
-        help="Load settings from DB for this user",
+        help="Supabase user UUID to scope rescored offers",
     )
     args = parser.parse_args()
 
-    conn = sqlite3.connect(args.db)
+    conn = psycopg2.connect(_DATABASE_URL)
     prefix = "[DRY RUN] " if args.dry_run else ""
-    logger.info("%sRescoring offers in %s", prefix, args.db)
+    logger.info("%sRescoring offers for user %s", prefix, args.user_id)
 
-    stats = rescore(conn, dry_run=args.dry_run, user_id=args.user_id)
-    conn.close()
+    try:
+        stats = rescore(conn, args.user_id, dry_run=args.dry_run)
+    finally:
+        conn.close()
 
     action = "Would update" if args.dry_run else "Updated"
     print(f"\n{prefix}Total: {stats['total']} offers -- {action}: {stats['changed']}")

@@ -488,6 +488,8 @@ async def profile_save_cv_meta(
     lang: str = Form("fr"),
     summary: str = Form(""),
 ) -> HTMLResponse:
+    if lang not in ("fr", "en"):
+        lang = "fr"
     conn = request.app.state.db.conn
     user_id = current_user["sub"]
     user_data.save_cv_meta(conn, user_id, lang, summary)
@@ -507,6 +509,8 @@ async def profile_save_cv_experience(
     lang: str = Form("fr"),
     data: str = Form(""),
 ) -> HTMLResponse:
+    if lang not in ("fr", "en"):
+        lang = "fr"
     conn = request.app.state.db.conn
     user_id = current_user["sub"]
     try:
@@ -554,6 +558,8 @@ async def profile_save_cv_skills(
     lang: str = Form("fr"),
     data: str = Form(""),
 ) -> HTMLResponse:
+    if lang not in ("fr", "en"):
+        lang = "fr"
     conn = request.app.state.db.conn
     user_id = current_user["sub"]
     try:
@@ -609,6 +615,8 @@ async def profile_save_cv_education(
     lang: str = Form("fr"),
     data: str = Form(""),
 ) -> HTMLResponse:
+    if lang not in ("fr", "en"):
+        lang = "fr"
     conn = request.app.state.db.conn
     user_id = current_user["sub"]
     try:

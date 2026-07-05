@@ -9,6 +9,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## 2026-07-05
 
+### Fixed
+- `scripts/rescore.py` — migrate from sqlite3 to psycopg2; `rescore()` now accepts `(conn, user_id, dry_run)` and queries only "À envoyer" rows for that user; `main()` loads DATABASE_URL from env and requires `--user-id`
+- `dashboard/app.py` — normalize invalid `lang` form values to `"fr"` in `POST /profile/cv/meta`, `/experience`, `/skills`, `/education` to prevent `IntegrityError` on DB CHECK constraint
+- `scripts/pre_filter.py` — hoist `sys.path.insert` for dashboard import to module level with idempotent guard
+- `scripts/scan_ats.py` — hoist `sys.path.insert` for dashboard import to module level with idempotent guard
+- `dashboard/user_data.py` — guard `isinstance(entry, dict)` in `save_experience`, `save_skills`, `save_certifications`, `save_education` to skip null/non-dict entries and prevent `AttributeError`
+
 ### Added
 - `alembic/versions/0002_user_profile_settings.py` — migration for 9 new user profile/settings/CV tables (`user_profiles`, `user_settings`, `user_ats_targets`, `user_cv_meta`, `user_experience`, `user_experience_bullets`, `user_skills`, `user_certifications`, `user_education`)
 - `dashboard/user_data.py` — `get_profile()`, `save_profile()`, `get_settings()`, `save_settings()` functions; file-based auto-migration fallback reads from `config/contact.yaml`, `config/profile.md`, `config/settings.yaml`

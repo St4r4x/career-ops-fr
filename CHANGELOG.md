@@ -7,17 +7,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-## 2026-07-06 (continued)
-
-### Added
-- `dashboard/llm.py` — `PrepSheetDraft` dataclass and `generate_prep_questions(offer, analysis)` function (Phase 4), generating 2-3 sentence company summaries, technology stack lists, and 8-12 interview questions covering technical depth, MLOps/deployment, behavioural, and why-this-role topics
-- `tests/test_llm.py` — test for `generate_prep_questions()` verifying JSON response parsing into `PrepSheetDraft` dataclass fields
-- `dashboard/llm.py` — Groq/Gemini-backed LLM pipeline (`analyze_offer`, `rewrite_cv_summary`, `write_cover_letter` with a grounding gate, `generate_prep_questions`)
-- `POST /offers/{offer_id}/prepare` in `dashboard/app.py` — server-side candidature prep, replaces the Claude-Code-CLI `modes/prepare-candidature.md` workflow for CV/cover-letter/prep-sheet generation
-
-### Changed
-- `dashboard/templates/partials/offer_detail.html` — "Préparer candidature" button now posts to `/offers/{id}/prepare` (server-side LLM pipeline) instead of copying a Claude Code CLI command
-
 ## 2026-07-06
 
 ### Added
@@ -26,13 +15,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `dashboard/llm.py` — `OfferAnalysis` dataclass and `analyze_offer(offer)` function (Phase 1), extracting job posting structure into top skills, keywords, company context, gaps, hook angle, language, and English CV requirement via LLM
 - `dashboard/llm.py` — `CvRewrite` dataclass and `rewrite_cv_summary(profile, cv, analysis)` function (Phase 2), rewriting the candidate's CV summary to match a specific offer while filtering LLM-suggested skills against the candidate's known skill list
 - `dashboard/llm.py` — `CoverLetterDraft` dataclass and `write_cover_letter(profile, cv, offer, analysis)` function (Phase 3), generating 3-paragraph cover letters with strict experience_id grounding; retries once if citations reference unknown experience IDs, raises `GroundingError` after second failure
+- `dashboard/llm.py` — `PrepSheetDraft` dataclass and `generate_prep_questions(offer, analysis)` function (Phase 4), generating 2-3 sentence company summaries, technology stack lists, and 8-12 interview questions covering technical depth, MLOps/deployment, behavioural, and why-this-role topics
+- `POST /offers/{offer_id}/prepare` in `dashboard/app.py` — server-side candidature prep, replaces the Claude-Code-CLI `modes/prepare-candidature.md` workflow for CV/cover-letter/prep-sheet generation
 - `tests/test_llm.py` — test suite for `call_llm()` covering Groq success path, Gemini fallback, both-providers-fail case, and JSON schema hint appending
 - `tests/test_llm.py` — test for `analyze_offer()` verifying JSON response parsing and dataclass field population
 - `tests/test_llm.py` — tests for `rewrite_cv_summary()` verifying known skills are kept and unknown skills are silently dropped
 - `tests/test_llm.py` — tests for `write_cover_letter()` covering valid citations accepted immediately, invalid-then-valid (retry succeeds), and invalid-twice (raises `GroundingError`)
+- `tests/test_llm.py` — test for `generate_prep_questions()` verifying JSON response parsing into `PrepSheetDraft` dataclass fields
 
 ### Changed
 - `dashboard/llm.py` — migrate `_call_gemini` from the deprecated `google-generativeai` package to `google-genai` (`genai.Client`/`client.models.generate_content`); `google-generativeai` has ended all support upstream
+- `dashboard/templates/partials/offer_detail.html` — "Préparer candidature" button now posts to `/offers/{id}/prepare` (server-side LLM pipeline) instead of copying a Claude Code CLI command
 
 ### Fixed
 - `dashboard/templates/partials/profile_cv_experience.html` — bullets textarea used `map(attribute='text')` assuming dict entries, but `user_data.get_cv()` returns bullets as plain strings; render `exp.bullets | join('\n')` directly

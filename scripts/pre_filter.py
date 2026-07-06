@@ -269,8 +269,13 @@ def score_offer(offer: RawOffer, settings: dict) -> tuple[float, list[str]]:
     location_lower = (offer.location or "").lower()
     desc_lower = _desc_blob(offer).lower()
 
-    search_cfg = settings.get("search", {})
-    scoring_cfg = settings.get("scoring", {})
+    # settings.yaml nests these under "search"/"scoring"; DB-backed settings are flat
+    # (keys directly on settings, salary bounds renamed to salary_min/salary_max)
+    search_cfg = settings.get("search", settings)
+    scoring_cfg = settings.get("scoring") or {
+        "target_salary_min": settings.get("salary_min", 0),
+        "target_salary_max": settings.get("salary_max", 999_999),
+    }
 
     for kw in search_cfg.get("keywords", []):
         if kw.lower() in title_lower:
@@ -343,7 +348,7 @@ def pre_filter(offers: list[RawOffer], settings: dict) -> list[RawOffer]:
     threshold: float = (
         settings.get("scoring", {}).get("thresholds", {}).get("consider", 3.0)
     )
-    location_filter = settings.get("search", {}).get("location", "")
+    location_filter = settings.get("search", settings).get("location", "")
     filter_by_location = bool(location_filter)
     kept: list[RawOffer] = []
     for offer in offers:

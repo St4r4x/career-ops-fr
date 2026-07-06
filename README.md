@@ -134,6 +134,7 @@ To bypass auth entirely during development, set `DEV_AUTO_LOGIN=true` in `.env`.
 | `/stats` | Pipeline statistics — response rate, interview count, funnel with conversion rates, daily report widget |
 | `/profile` | Profile editor — contact info, profile text, and CV editor (FR/EN tabs) backed by DB |
 | `/settings` | Preferences — search keywords, salary range, target companies, ATS targets CRUD |
+| `POST /offers/{offer_id}/prepare` | LLM pipeline — analyzes offer, rewrites CV summary, writes cover letter, generates interview prep sheet, renders all three as PDFs |
 
 **Offer detail panel:**
 - Change status (À envoyer → Envoyée → Entretien RH → …)

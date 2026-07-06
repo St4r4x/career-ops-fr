@@ -28,6 +28,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `.env.example` — add `GEMINI_API_KEY` (Gemini fallback for the LLM pipeline)
 - `dashboard/llm.py` — migrate `_call_gemini` from the deprecated `google-generativeai` package to `google-genai` (`genai.Client`/`client.models.generate_content`); `google-generativeai` has ended all support upstream
 - `dashboard/templates/partials/offer_detail.html` — "Préparer candidature" button now posts to `/offers/{id}/prepare` (server-side LLM pipeline) instead of copying a Claude Code CLI command
+- `README.md` — add `POST /offers/{offer_id}/prepare` to the Dashboard routes table
 
 ### Fixed
 - `dashboard/templates/partials/profile_cv_experience.html` — bullets textarea used `map(attribute='text')` assuming dict entries, but `user_data.get_cv()` returns bullets as plain strings; render `exp.bullets | join('\n')` directly

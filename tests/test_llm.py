@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json as _json
 import sys
 from pathlib import Path
 
@@ -63,3 +64,30 @@ def test_call_llm_appends_json_schema_hint_to_user_prompt(
     monkeypatch.setattr(llm, "_call_groq", _capture)
     llm.call_llm("system", "user", json_schema={"foo": "bar"})
     assert '"foo": "bar"' in seen_prompts[0]
+
+
+_CANNED_ANALYSIS = {
+    "top_skills": ["PyTorch", "Kubernetes", "RAG"],
+    "keywords": ["MLOps", "production ML"],
+    "company_context": "AI startup building developer tools, ~40 people, Python stack.",
+    "gaps": ["Kubernetes"],
+    "hook_angle": "They open-sourced their inference engine, which I've used personally.",
+    "offer_language": "en",
+    "requires_english_cv": True,
+}
+
+
+def test_analyze_offer_parses_llm_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(llm, "call_llm", lambda *a, **k: _json.dumps(_CANNED_ANALYSIS))
+    offer = {
+        "company": "Acme",
+        "role": "ML Engineer",
+        "description": "We need PyTorch...",
+    }
+
+    analysis = llm.analyze_offer(offer)
+
+    assert analysis.top_skills == ["PyTorch", "Kubernetes", "RAG"]
+    assert analysis.offer_language == "en"
+    assert analysis.requires_english_cv is True
+    assert analysis.gaps == ["Kubernetes"]

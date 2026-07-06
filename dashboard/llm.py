@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from dataclasses import dataclass
 from typing import Any
 
 import google.generativeai as genai
@@ -82,3 +83,58 @@ def call_llm(
     except Exception as exc:
         # Any Gemini SDK failure here means both providers are down.
         raise LLMError(f"Both Groq and Gemini failed: {exc}") from exc
+
+
+@dataclass
+class OfferAnalysis:
+    top_skills: list[str]
+    keywords: list[str]
+    company_context: str
+    gaps: list[str]
+    hook_angle: str
+    offer_language: str
+    requires_english_cv: bool
+
+
+_ANALYZE_OFFER_SCHEMA = {
+    "top_skills": ["string"],
+    "keywords": ["string"],
+    "company_context": "string",
+    "gaps": ["string"],
+    "hook_angle": "string",
+    "offer_language": "'fr' or 'en'",
+    "requires_english_cv": "boolean",
+}
+
+_ANALYZE_OFFER_SYSTEM_PROMPT = (
+    "You are a career coach analyzing a job posting for a candidate preparing an "
+    "application. Extract only what is explicitly present in the posting text, "
+    "never invent requirements."
+)
+
+
+def analyze_offer(offer: dict[str, Any]) -> OfferAnalysis:
+    user_prompt = (
+        f"Job posting for {offer.get('role', '')} at {offer.get('company', '')}:\n\n"
+        f"{offer.get('description', '')}\n\n"
+        "Extract 5-7 top_skills (exact terms from the posting), keywords, a "
+        "company_context (mission, product, size, stack), gaps (skills a typical "
+        "candidate profile might be missing based on the posting), a hook_angle "
+        "(one concrete why-this-company reason, not generic), the offer_language "
+        "('fr' or 'en'), and requires_english_cv (true only if the posting "
+        "explicitly asks for an English-language CV/resume submission, not merely "
+        "English fluency)."
+    )
+    raw = call_llm(
+        _ANALYZE_OFFER_SYSTEM_PROMPT, user_prompt, json_schema=_ANALYZE_OFFER_SCHEMA
+    )
+    data = json.loads(raw)
+    return OfferAnalysis(
+        top_skills=list(data["top_skills"]),
+        keywords=list(data["keywords"]),
+        company_context=str(data["company_context"]),
+        gaps=list(data["gaps"]),
+        hook_angle=str(data["hook_angle"]),
+        offer_language=str(data["offer_language"]),
+        requires_english_cv=bool(data["requires_english_cv"]),
+    )

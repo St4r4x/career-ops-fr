@@ -7,30 +7,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-## 2026-07-06 (continued cont.)
-
-### Added
-- `dashboard/llm.py` — `CoverLetterDraft` dataclass and `write_cover_letter(profile, cv, offer, analysis)` function (Phase 3), generating 3-paragraph cover letters with strict experience_id grounding; retries once if citations reference unknown experience IDs, raises `GroundingError` after second failure
-- `tests/test_llm.py` — tests for `write_cover_letter()` covering valid citations accepted immediately, invalid-then-valid (retry succeeds), and invalid-twice (raises `GroundingError`)
-
-## 2026-07-06 (continued)
-
-### Added
-- `dashboard/llm.py` — `CvRewrite` dataclass and `rewrite_cv_summary(profile, cv, analysis)` function (Phase 2), rewriting the candidate's CV summary to match a specific offer while filtering LLM-suggested skills against the candidate's known skill list
-- `tests/test_llm.py` — tests for `rewrite_cv_summary()` verifying known skills are kept and unknown skills are silently dropped
-
-### Changed
-
-### Fixed
-
 ## 2026-07-06
 
 ### Added
 - `alembic/versions/0003_prep_sheet_path.py` — adds `applications.prep_sheet_path` column, needed for the upcoming server-side candidature-prep pipeline (Group 1 of the deployment roadmap)
 - `dashboard/llm.py` — LLM client foundation with `call_llm()` function that calls Groq (llama-3.3-70b-versatile) first, transparently falling back to Gemini (gemini-2.0-flash) on failure; plus `LLMError` and `GroundingError` exceptions for phase functions and routes
 - `dashboard/llm.py` — `OfferAnalysis` dataclass and `analyze_offer(offer)` function (Phase 1), extracting job posting structure into top skills, keywords, company context, gaps, hook angle, language, and English CV requirement via LLM
+- `dashboard/llm.py` — `CvRewrite` dataclass and `rewrite_cv_summary(profile, cv, analysis)` function (Phase 2), rewriting the candidate's CV summary to match a specific offer while filtering LLM-suggested skills against the candidate's known skill list
+- `dashboard/llm.py` — `CoverLetterDraft` dataclass and `write_cover_letter(profile, cv, offer, analysis)` function (Phase 3), generating 3-paragraph cover letters with strict experience_id grounding; retries once if citations reference unknown experience IDs, raises `GroundingError` after second failure
 - `tests/test_llm.py` — test suite for `call_llm()` covering Groq success path, Gemini fallback, both-providers-fail case, and JSON schema hint appending
 - `tests/test_llm.py` — test for `analyze_offer()` verifying JSON response parsing and dataclass field population
+- `tests/test_llm.py` — tests for `rewrite_cv_summary()` verifying known skills are kept and unknown skills are silently dropped
+- `tests/test_llm.py` — tests for `write_cover_letter()` covering valid citations accepted immediately, invalid-then-valid (retry succeeds), and invalid-twice (raises `GroundingError`)
 
 ### Fixed
 - `dashboard/templates/partials/profile_cv_experience.html` — bullets textarea used `map(attribute='text')` assuming dict entries, but `user_data.get_cv()` returns bullets as plain strings; render `exp.bullets | join('\n')` directly

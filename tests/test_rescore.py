@@ -43,6 +43,12 @@ def pg_conn():
     conn.close()
 
 
+def _fetchone(conn, sql: str):
+    with conn.cursor() as cur:
+        cur.execute(sql)
+        return cur.fetchone()
+
+
 def _seed(conn, offers: list[dict]) -> None:
     with conn.cursor() as cur:
         for o in offers:
@@ -107,13 +113,9 @@ class TestRescore:
                 },
             ],
         )
-        with pg_conn.cursor() as cur:
-            cur.execute("SELECT score_grade FROM applications")
-            row_before = cur.fetchone()[0]
+        row_before = _fetchone(pg_conn, "SELECT score_grade FROM applications")[0]
         rescore(pg_conn, TEST_USER_ID, dry_run=True)
-        with pg_conn.cursor() as cur:
-            cur.execute("SELECT score_grade FROM applications")
-            row_after = cur.fetchone()[0]
+        row_after = _fetchone(pg_conn, "SELECT score_grade FROM applications")[0]
         assert row_before == row_after == "F"
 
     def test_rescore_updates_grades(self, pg_conn) -> None:
@@ -132,9 +134,7 @@ class TestRescore:
             ],
         )
         rescore(pg_conn, TEST_USER_ID, dry_run=False)
-        with pg_conn.cursor() as cur:
-            cur.execute("SELECT score_grade, score_value FROM applications")
-            row = cur.fetchone()
+        row = _fetchone(pg_conn, "SELECT score_grade, score_value FROM applications")
         assert row[0] != "F"
         assert row[1] > 1.0
 
@@ -154,13 +154,13 @@ class TestRescore:
             ],
         )
         rescore(pg_conn, TEST_USER_ID, dry_run=False)
-        with pg_conn.cursor() as cur:
-            cur.execute("SELECT score_grade, score_value FROM applications")
-            row_first = cur.fetchone()
+        row_first = _fetchone(
+            pg_conn, "SELECT score_grade, score_value FROM applications"
+        )
         rescore(pg_conn, TEST_USER_ID, dry_run=False)
-        with pg_conn.cursor() as cur:
-            cur.execute("SELECT score_grade, score_value FROM applications")
-            row_second = cur.fetchone()
+        row_second = _fetchone(
+            pg_conn, "SELECT score_grade, score_value FROM applications"
+        )
         assert row_first == row_second
 
     def test_rescore_returns_summary(self, pg_conn) -> None:

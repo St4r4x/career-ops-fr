@@ -12,6 +12,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 - `dashboard/llm.py` — `PrepSheetDraft` dataclass and `generate_prep_questions(offer, analysis)` function (Phase 4), generating 2-3 sentence company summaries, technology stack lists, and 8-12 interview questions covering technical depth, MLOps/deployment, behavioural, and why-this-role topics
 - `tests/test_llm.py` — test for `generate_prep_questions()` verifying JSON response parsing into `PrepSheetDraft` dataclass fields
+- `dashboard/llm.py` — Groq/Gemini-backed LLM pipeline (`analyze_offer`, `rewrite_cv_summary`, `write_cover_letter` with a grounding gate, `generate_prep_questions`)
+- `POST /offers/{offer_id}/prepare` in `dashboard/app.py` — server-side candidature prep, replaces the Claude-Code-CLI `modes/prepare-candidature.md` workflow for CV/cover-letter/prep-sheet generation
+
+### Changed
+- `dashboard/templates/partials/offer_detail.html` — "Préparer candidature" button now posts to `/offers/{id}/prepare` (server-side LLM pipeline) instead of copying a Claude Code CLI command
 
 ## 2026-07-06
 

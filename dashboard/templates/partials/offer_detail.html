@@ -30,6 +30,13 @@
   <!-- Divider -->
   <div style="height:1px;background:linear-gradient(90deg,#6366f1,transparent);margin-bottom:1rem;" class="shrink-0"></div>
 
+  {% if prep_error %}
+  <div class="shrink-0 mb-4 text-sm rounded-lg p-3"
+       style="background:rgba(185,28,28,0.15);border:1px solid rgba(185,28,28,0.4);color:#fca5a5;">
+    {{ prep_error }}
+  </div>
+  {% endif %}
+
   <!-- Corps en 2 colonnes : gauche = méta + actions, droite = description + notes -->
   <div class="flex gap-6 flex-1 min-h-0">
 
@@ -61,6 +68,10 @@
         {% if offer.cover_letter_path %}
         <dt style="color:#8b5cf6;">LM</dt>
         <dd style="color:#e2e8f0;" class="text-xs break-all">{{ offer.cover_letter_path }}</dd>
+        {% endif %}
+        {% if offer.prep_sheet_path %}
+        <dt style="color:#8b5cf6;">Fiche prep</dt>
+        <dd style="color:#e2e8f0;" class="text-xs break-all">{{ offer.prep_sheet_path }}</dd>
         {% endif %}
         {% if offer.contacts %}
         <dt style="color:#8b5cf6;">Contacts</dt>
@@ -102,18 +113,21 @@
         </button>
 
         {% if offer.status in apply_statuses %}
-        <label class="flex items-center gap-2 text-sm cursor-pointer select-none"
-               style="color:#a5b4fc;">
-          <input type="checkbox" id="lm-toggle-{{ offer.id }}"
-                 class="accent-indigo-500 cursor-pointer">
-          Inclure lettre de motivation
-        </label>
-        <button
-          class="text-sm px-4 py-2 rounded-lg text-white font-medium bg-accent transition-opacity hover:opacity-90 text-left"
-          onclick="copyPrepCmd({{ offer.id }})"
-          id="prep-btn-{{ offer.id }}">
-          ✦ Préparer candidature
-        </button>
+        <form hx-post="/offers/{{ offer.id }}/prepare"
+              hx-target="#offer-detail"
+              hx-swap="innerHTML"
+              class="flex flex-col gap-2">
+          <label class="flex items-center gap-2 text-sm cursor-pointer select-none"
+                 style="color:#a5b4fc;">
+            <input type="checkbox" name="skip_prep" value="true"
+                   class="accent-indigo-500 cursor-pointer">
+            Sans fiche de préparation d'entretien
+          </label>
+          <button type="submit"
+                  class="text-sm px-4 py-2 rounded-lg text-white font-medium bg-accent transition-opacity hover:opacity-90 text-left">
+            ✦ Préparer candidature (IA)
+          </button>
+        </form>
         {% elif offer.status in interview_statuses %}
         <button
           class="text-sm px-4 py-2 rounded-lg text-white font-medium bg-accent transition-opacity hover:opacity-90 text-left"
@@ -174,28 +188,7 @@
 
   </div>
 
-  {% if offer.status in apply_statuses %}
-  <script>
-  function copyPrepCmd(id) {
-    var withLm = document.getElementById("lm-toggle-" + id);
-    var cmd;
-    if (withLm && withLm.checked) {
-      cmd = "claude --system-prompt \"$(cat modes/prepare-candidature.md)\" \"Prépare la candidature pour l'offre ID " + id + " --no-prep\"";
-    } else {
-      cmd = "claude --system-prompt \"$(cat modes/generate-cv.md)\" \"Génère le CV pour l'offre ID " + id + "\"";
-    }
-    navigator.clipboard.writeText(cmd).then(function() {
-      var btn = document.getElementById("prep-btn-" + id);
-      btn.textContent = "✓ Commande copiée !";
-      setTimeout(function() { btn.textContent = "✦ Préparer candidature"; }, 2000);
-    }).catch(function() {
-      var btn = document.getElementById("prep-btn-" + id);
-      btn.textContent = "✗ Copie échouée";
-      setTimeout(function() { btn.textContent = "✦ Préparer candidature"; }, 2000);
-    });
-  }
-  </script>
-  {% elif offer.status in interview_statuses %}
+  {% if offer.status in interview_statuses %}
   <script>
   function copyInterviewCmd(id) {
     var cmd = "claude --system-prompt \"$(cat modes/prepare-entretien.md)\" \"Prépare l'entretien pour l'offre ID " + id + "\"";

@@ -62,12 +62,13 @@ def _insert_row(
     status: str = "À envoyer",
     send_date: str | None = None,
     user_id: str = TEST_USER_ID,
+    description: str = "",
 ) -> int:
     with db.conn.cursor() as cur:
         cur.execute(
             "INSERT INTO applications (user_id, company, role, offer_url, detection_date,"
-            " score_grade, score_value, status, send_date) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)"
-            " RETURNING id",
+            " score_grade, score_value, status, send_date, description) VALUES"
+            " (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id",
             (
                 user_id,
                 company,
@@ -78,6 +79,7 @@ def _insert_row(
                 score_value,
                 status,
                 send_date,
+                description,
             ),
         )
         row_id = cur.fetchone()[0]
@@ -628,23 +630,10 @@ class TestPrepareCandidature:
         )
         r = client_with_data.get(f"/offers/{row['id']}")
         assert r.status_code == 200
-        assert "copyPrepCmd" in r.text
-        assert f"copyPrepCmd({row['id']})" in r.text
+        assert f'hx-post="/offers/{row["id"]}/prepare"' in r.text
+        assert "✦ Préparer candidature (IA)" in r.text
 
-    def test_apply_status_shows_lm_checkbox(self, client_with_data: TestClient) -> None:
-        import app as dashboard_app
-
-        db = dashboard_app.app.state.db
-        row = next(
-            r
-            for r in db.get_all({}, user_id=TEST_USER_ID)
-            if r["status"] == "À envoyer"
-        )
-        r = client_with_data.get(f"/offers/{row['id']}")
-        assert "Inclure lettre de motivation" in r.text
-        assert f"lm-toggle-{row['id']}" in r.text
-
-    def test_apply_status_cv_only_command_uses_generate_cv(
+    def test_apply_status_shows_skip_prep_checkbox(
         self, client_with_data: TestClient
     ) -> None:
         import app as dashboard_app
@@ -656,22 +645,8 @@ class TestPrepareCandidature:
             if r["status"] == "À envoyer"
         )
         r = client_with_data.get(f"/offers/{row['id']}")
-        assert "generate-cv.md" in r.text
-
-    def test_apply_status_with_lm_command_uses_prepare_candidature(
-        self, client_with_data: TestClient
-    ) -> None:
-        import app as dashboard_app
-
-        db = dashboard_app.app.state.db
-        row = next(
-            r
-            for r in db.get_all({}, user_id=TEST_USER_ID)
-            if r["status"] == "À envoyer"
-        )
-        r = client_with_data.get(f"/offers/{row['id']}")
-        assert "prepare-candidature.md" in r.text
-        assert "--no-prep" in r.text
+        assert "Sans fiche de préparation d'entretien" in r.text
+        assert 'name="skip_prep"' in r.text
 
     def test_interview_status_shows_interview_button(
         self, client_with_interview_offer: TestClient
@@ -1048,3 +1023,204 @@ class TestReportWidget:
         r = client.get("/stats")
         assert "New report" in r.text
         assert "Old report" not in r.text
+
+
+class TestOfferPrepare:
+    _LONG_DESCRIPTION = "We need an ML engineer with PyTorch and RAG experience. " * 10
+
+    _SAMPLE_CV = {
+        "meta": {"summary": "AI engineer with a background in sales."},
+        "experience": [
+            {
+                "id": 1,
+                "title": "AI Engineer",
+                "company": "Missia",
+                "type": "CDI",
+                "period": "2024-2026",
+                "sort_order": 0,
+                "bullets": ["Built RAG pipelines"],
+            }
+        ],
+        "skills": [{"id": 1, "category": "ML", "skill": "PyTorch", "sort_order": 0}],
+        "certifications": [],
+        "education": [],
+    }
+
+    _SAMPLE_PROFILE = {
+        "name": "Arnaud Thery",
+        "title": "AI/ML Engineer",
+        "email": "arnaud@example.com",
+        "phone": "0600000000",
+        "location": "Paris",
+        "linkedin": "",
+        "github": "",
+        "profile_md": "",
+    }
+
+    def _patch_phases(self, monkeypatch: pytest.MonkeyPatch, dashboard_app) -> None:
+        import llm
+
+        monkeypatch.setattr(
+            dashboard_app.user_data,
+            "get_profile",
+            lambda conn, uid: self._SAMPLE_PROFILE,
+        )
+        monkeypatch.setattr(
+            dashboard_app.user_data,
+            "get_cv",
+            lambda conn, uid, lang="fr": self._SAMPLE_CV,
+        )
+        monkeypatch.setattr(
+            llm,
+            "analyze_offer",
+            lambda offer: llm.OfferAnalysis(
+                top_skills=["PyTorch"],
+                keywords=["MLOps"],
+                company_context="AI startup.",
+                gaps=[],
+                hook_angle="Their open-source engine.",
+                offer_language="fr",
+                requires_english_cv=False,
+            ),
+        )
+        monkeypatch.setattr(
+            llm,
+            "rewrite_cv_summary",
+            lambda profile, cv, analysis: llm.CvRewrite(
+                highlighted_skills=["PyTorch"], summary="Tailored summary."
+            ),
+        )
+        monkeypatch.setattr(
+            llm,
+            "write_cover_letter",
+            lambda profile, cv, offer, analysis: llm.CoverLetterDraft(
+                paragraphs=["Hook.", "Proof.", "Close."],
+                citations=[{"claim": "Built RAG pipelines", "experience_id": 1}],
+            ),
+        )
+        monkeypatch.setattr(
+            llm,
+            "generate_prep_questions",
+            lambda offer, analysis: llm.PrepSheetDraft(
+                company_summary="AI startup.",
+                tech_stack=["Python"],
+                questions=[{"theme": "Technique ML", "question": "Explain RAG."}],
+            ),
+        )
+
+    def test_prepare_happy_path_writes_all_three_paths(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        offer_id = _insert_row(db, description=self._LONG_DESCRIPTION)
+        self._patch_phases(monkeypatch, dashboard_app)
+        monkeypatch.setattr(
+            "scripts.generate_pdf.generate_pdf", lambda ctx, **kw: tmp_path / "cv.pdf"
+        )
+        monkeypatch.setattr(
+            "scripts.generate_cover_letter.generate_pdf",
+            lambda ctx, **kw: tmp_path / "cl.pdf",
+        )
+        monkeypatch.setattr(
+            "scripts.generate_prep_sheet.generate_pdf",
+            lambda ctx, **kw: tmp_path / "prep.pdf",
+        )
+
+        r = client.post(f"/offers/{offer_id}/prepare")
+
+        assert r.status_code == 200
+        offer = db.get_by_id(offer_id, user_id=TEST_USER_ID)
+        assert offer["cv_path"] == str(tmp_path / "cv.pdf")
+        assert offer["cover_letter_path"] == str(tmp_path / "cl.pdf")
+        assert offer["prep_sheet_path"] == str(tmp_path / "prep.pdf")
+
+    def test_prepare_skip_prep_leaves_prep_sheet_path_empty(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        import app as dashboard_app
+        import llm
+
+        db = dashboard_app.app.state.db
+        offer_id = _insert_row(db, description=self._LONG_DESCRIPTION)
+        self._patch_phases(monkeypatch, dashboard_app)
+
+        def _fail_prep_questions(offer: dict, analysis: object) -> None:
+            raise AssertionError(
+                "generate_prep_questions should not be called when skip_prep=True"
+            )
+
+        monkeypatch.setattr(llm, "generate_prep_questions", _fail_prep_questions)
+        monkeypatch.setattr(
+            "scripts.generate_pdf.generate_pdf", lambda ctx, **kw: tmp_path / "cv.pdf"
+        )
+        monkeypatch.setattr(
+            "scripts.generate_cover_letter.generate_pdf",
+            lambda ctx, **kw: tmp_path / "cl.pdf",
+        )
+
+        r = client.post(f"/offers/{offer_id}/prepare", data={"skip_prep": "true"})
+
+        assert r.status_code == 200
+        offer = db.get_by_id(offer_id, user_id=TEST_USER_ID)
+        assert offer["cv_path"] == str(tmp_path / "cv.pdf")
+        assert offer["prep_sheet_path"] == ""
+
+    def test_prepare_rejects_thin_description(self, client: TestClient) -> None:
+        import app as dashboard_app
+
+        db = dashboard_app.app.state.db
+        offer_id = _insert_row(db, description="Too short.")
+
+        r = client.post(f"/offers/{offer_id}/prepare")
+
+        assert r.status_code == 200
+        assert "trop courte" in r.text
+        offer = db.get_by_id(offer_id, user_id=TEST_USER_ID)
+        assert offer["cv_path"] == ""
+
+    def test_prepare_llm_failure_shows_error_and_writes_nothing(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import app as dashboard_app
+        import llm
+
+        db = dashboard_app.app.state.db
+        offer_id = _insert_row(db, description=self._LONG_DESCRIPTION)
+
+        def _fail_analyze(offer: dict) -> None:
+            raise llm.LLMError("both providers down")
+
+        monkeypatch.setattr(llm, "analyze_offer", _fail_analyze)
+
+        r = client.post(f"/offers/{offer_id}/prepare")
+
+        assert r.status_code == 200
+        assert "Échec de la préparation IA" in r.text
+        offer = db.get_by_id(offer_id, user_id=TEST_USER_ID)
+        assert offer["cv_path"] == ""
+
+    def test_prepare_grounding_failure_shows_error_and_writes_nothing(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import app as dashboard_app
+        import llm
+
+        db = dashboard_app.app.state.db
+        offer_id = _insert_row(db, description=self._LONG_DESCRIPTION)
+        self._patch_phases(monkeypatch, dashboard_app)
+
+        def _fail_cover_letter(
+            profile: dict, cv: dict, offer: dict, analysis: object
+        ) -> None:
+            raise llm.GroundingError("invalid citation")
+
+        monkeypatch.setattr(llm, "write_cover_letter", _fail_cover_letter)
+
+        r = client.post(f"/offers/{offer_id}/prepare")
+
+        assert r.status_code == 200
+        assert "Échec de la préparation IA" in r.text
+        offer = db.get_by_id(offer_id, user_id=TEST_USER_ID)
+        assert offer["cv_path"] == ""

@@ -19,7 +19,7 @@ def test_call_llm_uses_hf_when_it_succeeds(monkeypatch: pytest.MonkeyPatch) -> N
 
     monkeypatch.setattr(llm, "_call_gemini", _fail_gemini)
 
-    result = llm.call_llm("system", "user")
+    result = llm.call_llm("test-hf-token", "system", "user")
     assert result == "hf answer"
 
 
@@ -32,7 +32,7 @@ def test_call_llm_falls_back_to_gemini_on_hf_failure(
     monkeypatch.setattr(llm, "_call_hf", _fail_hf)
     monkeypatch.setattr(llm, "_call_gemini", lambda *a, **k: "gemini answer")
 
-    result = llm.call_llm("system", "user")
+    result = llm.call_llm("test-hf-token", "system", "user")
     assert result == "gemini answer"
 
 
@@ -49,7 +49,7 @@ def test_call_llm_raises_llm_error_when_both_providers_fail(
     monkeypatch.setattr(llm, "_call_gemini", _fail_gemini)
 
     with pytest.raises(llm.LLMError):
-        llm.call_llm("system", "user")
+        llm.call_llm("test-hf-token", "system", "user")
 
 
 def test_call_llm_appends_json_schema_hint_to_user_prompt(
@@ -57,12 +57,14 @@ def test_call_llm_appends_json_schema_hint_to_user_prompt(
 ) -> None:
     seen_prompts = []
 
-    def _capture(system_prompt: str, user_prompt: str, json_mode: bool) -> str:
+    def _capture(
+        hf_token: str, system_prompt: str, user_prompt: str, json_mode: bool
+    ) -> str:
         seen_prompts.append(user_prompt)
         return "{}"
 
     monkeypatch.setattr(llm, "_call_hf", _capture)
-    llm.call_llm("system", "user", json_schema={"foo": "bar"})
+    llm.call_llm("test-hf-token", "system", "user", json_schema={"foo": "bar"})
     assert '"foo": "bar"' in seen_prompts[0]
 
 
@@ -85,7 +87,7 @@ def test_analyze_offer_parses_llm_response(monkeypatch: pytest.MonkeyPatch) -> N
         "description": "We need PyTorch...",
     }
 
-    analysis = llm.analyze_offer(offer)
+    analysis = llm.analyze_offer("test-hf-token", offer)
 
     assert analysis.top_skills == ["PyTorch", "Kubernetes", "RAG"]
     assert analysis.offer_language == "en"
@@ -125,7 +127,7 @@ def test_rewrite_cv_summary_keeps_known_skills(monkeypatch: pytest.MonkeyPatch) 
         requires_english_cv=False,
     )
 
-    result = llm.rewrite_cv_summary({}, _SAMPLE_CV, analysis)
+    result = llm.rewrite_cv_summary("test-hf-token", {}, _SAMPLE_CV, analysis)
 
     assert result.highlighted_skills == ["PyTorch"]
     assert result.summary == "Tailored summary."
@@ -149,7 +151,7 @@ def test_rewrite_cv_summary_drops_unknown_skill(
         requires_english_cv=False,
     )
 
-    result = llm.rewrite_cv_summary({}, _SAMPLE_CV, analysis)
+    result = llm.rewrite_cv_summary("test-hf-token", {}, _SAMPLE_CV, analysis)
 
     assert result.highlighted_skills == ["PyTorch"]
 
@@ -178,7 +180,9 @@ def test_write_cover_letter_accepts_valid_citations(
     }
     monkeypatch.setattr(llm, "call_llm", lambda *a, **k: _json.dumps(canned))
 
-    result = llm.write_cover_letter({}, _SAMPLE_CV, _SAMPLE_OFFER, _analysis())
+    result = llm.write_cover_letter(
+        "test-hf-token", {}, _SAMPLE_CV, _SAMPLE_OFFER, _analysis()
+    )
 
     assert result.paragraphs == ["Hook.", "Proof.", "Close."]
     assert result.citations[0]["experience_id"] == 1
@@ -203,13 +207,17 @@ def test_write_cover_letter_retries_once_on_invalid_citation(
     ]
     calls = []
 
-    def _fake_call_llm(system_prompt: str, user_prompt: str, **kwargs: object) -> str:
+    def _fake_call_llm(
+        hf_token: str, system_prompt: str, user_prompt: str, **kwargs: object
+    ) -> str:
         calls.append(user_prompt)
         return responses[len(calls) - 1]
 
     monkeypatch.setattr(llm, "call_llm", _fake_call_llm)
 
-    result = llm.write_cover_letter({}, _SAMPLE_CV, _SAMPLE_OFFER, _analysis())
+    result = llm.write_cover_letter(
+        "test-hf-token", {}, _SAMPLE_CV, _SAMPLE_OFFER, _analysis()
+    )
 
     assert len(calls) == 2
     assert "999" in calls[1]
@@ -226,7 +234,9 @@ def test_write_cover_letter_raises_grounding_error_after_second_invalid_citation
     monkeypatch.setattr(llm, "call_llm", lambda *a, **k: _json.dumps(canned))
 
     with pytest.raises(llm.GroundingError):
-        llm.write_cover_letter({}, _SAMPLE_CV, _SAMPLE_OFFER, _analysis())
+        llm.write_cover_letter(
+            "test-hf-token", {}, _SAMPLE_CV, _SAMPLE_OFFER, _analysis()
+        )
 
 
 def test_generate_prep_questions_parses_llm_response(
@@ -245,7 +255,7 @@ def test_generate_prep_questions_parses_llm_response(
     }
     monkeypatch.setattr(llm, "call_llm", lambda *a, **k: _json.dumps(canned))
 
-    result = llm.generate_prep_questions(_SAMPLE_OFFER, _analysis())
+    result = llm.generate_prep_questions("test-hf-token", _SAMPLE_OFFER, _analysis())
 
     assert result.company_summary == "AI startup building developer tools."
     assert result.tech_stack == ["Python", "Kubernetes"]

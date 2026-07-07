@@ -31,9 +31,11 @@ class GroundingError(Exception):
     """Raised when a cover letter still cites an unknown experience_id after retry."""
 
 
-def _call_hf(system_prompt: str, user_prompt: str, json_mode: bool) -> str:
+def _call_hf(
+    hf_token: str, system_prompt: str, user_prompt: str, json_mode: bool
+) -> str:
     client = OpenAI(
-        api_key=os.environ["HF_TOKEN"],
+        api_key=hf_token,
         base_url="https://router.huggingface.co/v1",
     )
     kwargs: dict[str, Any] = {}
@@ -63,7 +65,11 @@ def _call_gemini(system_prompt: str, user_prompt: str, json_mode: bool) -> str:
 
 
 def call_llm(
-    system_prompt: str, user_prompt: str, *, json_schema: dict | None = None
+    hf_token: str,
+    system_prompt: str,
+    user_prompt: str,
+    *,
+    json_schema: dict | None = None,
 ) -> str:
     """Call Hugging Face first; fall back to Gemini on any failure. Logs which provider answered."""
     json_mode = json_schema is not None
@@ -73,7 +79,7 @@ def call_llm(
             f"{json.dumps(json_schema)}"
         )
     try:
-        result = _call_hf(system_prompt, user_prompt, json_mode)
+        result = _call_hf(hf_token, system_prompt, user_prompt, json_mode)
         logger.info("llm: answered by huggingface")
         return result
     except OpenAIError as exc:
@@ -83,7 +89,6 @@ def call_llm(
         logger.info("llm: answered by gemini")
         return result
     except Exception as exc:
-        # Any Gemini SDK failure here means both providers are down.
         raise LLMError(f"Both Hugging Face and Gemini failed: {exc}") from exc
 
 
@@ -115,7 +120,7 @@ _ANALYZE_OFFER_SYSTEM_PROMPT = (
 )
 
 
-def analyze_offer(offer: dict[str, Any]) -> OfferAnalysis:
+def analyze_offer(hf_token: str, offer: dict[str, Any]) -> OfferAnalysis:
     user_prompt = (
         f"Job posting for {offer.get('role', '')} at {offer.get('company', '')}:\n\n"
         f"{offer.get('description', '')}\n\n"
@@ -128,7 +133,10 @@ def analyze_offer(offer: dict[str, Any]) -> OfferAnalysis:
         "English fluency)."
     )
     raw = call_llm(
-        _ANALYZE_OFFER_SYSTEM_PROMPT, user_prompt, json_schema=_ANALYZE_OFFER_SCHEMA
+        hf_token,
+        _ANALYZE_OFFER_SYSTEM_PROMPT,
+        user_prompt,
+        json_schema=_ANALYZE_OFFER_SCHEMA,
     )
     data = json.loads(raw)
     return OfferAnalysis(
@@ -157,7 +165,7 @@ _REWRITE_CV_SUMMARY_SYSTEM_PROMPT = (
 
 
 def rewrite_cv_summary(
-    profile: dict[str, Any], cv: dict[str, Any], analysis: OfferAnalysis
+    hf_token: str, profile: dict[str, Any], cv: dict[str, Any], analysis: OfferAnalysis
 ) -> CvRewrite:
     known_skills = [s["skill"] for s in cv.get("skills", [])]
     lang = "English" if analysis.requires_english_cv else "French"
@@ -172,6 +180,7 @@ def rewrite_cv_summary(
         "and domain."
     )
     raw = call_llm(
+        hf_token,
         _REWRITE_CV_SUMMARY_SYSTEM_PROMPT,
         user_prompt,
         json_schema=_REWRITE_CV_SUMMARY_SCHEMA,
@@ -233,6 +242,7 @@ _COVER_LETTER_SYSTEM_PROMPT = (
 
 
 def write_cover_letter(
+    hf_token: str,
     profile: dict[str, Any],
     cv: dict[str, Any],
     offer: dict[str, Any],
@@ -269,7 +279,10 @@ def write_cover_letter(
     invalid: list[dict[str, Any]] = []
     for attempt in range(2):
         raw = call_llm(
-            _COVER_LETTER_SYSTEM_PROMPT, user_prompt, json_schema=_COVER_LETTER_SCHEMA
+            hf_token,
+            _COVER_LETTER_SYSTEM_PROMPT,
+            user_prompt,
+            json_schema=_COVER_LETTER_SCHEMA,
         )
         data = json.loads(raw)
         citations = list(data.get("citations", []))
@@ -312,7 +325,7 @@ _PREP_SHEET_SYSTEM_PROMPT = (
 
 
 def generate_prep_questions(
-    offer: dict[str, Any], analysis: OfferAnalysis
+    hf_token: str, offer: dict[str, Any], analysis: OfferAnalysis
 ) -> PrepSheetDraft:
     user_prompt = (
         f"Company: {offer.get('company', '')}\nRole: {offer.get('role', '')}\n"
@@ -323,7 +336,7 @@ def generate_prep_questions(
         "MLOps/deployment, behavioural, and why-us/why-this-role."
     )
     raw = call_llm(
-        _PREP_SHEET_SYSTEM_PROMPT, user_prompt, json_schema=_PREP_SHEET_SCHEMA
+        hf_token, _PREP_SHEET_SYSTEM_PROMPT, user_prompt, json_schema=_PREP_SHEET_SCHEMA
     )
     data = json.loads(raw)
     return PrepSheetDraft(

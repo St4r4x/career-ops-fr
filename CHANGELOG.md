@@ -13,6 +13,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `frontend/` — new Next.js 16 app (TypeScript, App Router, Tailwind v4), scaffolded as the future home of the whole dashboard UI. Empty shell for now — pages migrate here one at a time in later plans. `next.config.ts` sets `output: "standalone"` for a lean Docker image.
 - `frontend/app/globals.css` — Diggo design tokens (dark-default palette, teal accent, light-theme overrides under `.light`)
 - `frontend/app/layout.tsx` — Inter font self-hosted via `next/font/google`
+- `frontend/components.json`, `frontend/lib/utils.ts`, `frontend/components/ui/button.tsx` — shadcn/ui initialized (`base-nova` style) and `Button` component added, reconciled to reuse Task 4's RGB-triplet tokens (`--background`, `--surface`, `--foreground`, `--border`, `--accent`, `--accent-foreground`) instead of shadcn's default OKLCH scheme
+- `frontend/components/theme-toggle.tsx` — dark/light toggle persisted to `localStorage`, FOUC-free via an inline bootstrap script in the root layout
+- `frontend/app/page.tsx` — proof-of-wiring home page that calls `/api/me` (works once served through the new proxy, Task 7)
 
 ## 2026-07-08
 

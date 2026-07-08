@@ -16,6 +16,19 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className={`${inter.variable} h-full`}>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                if (localStorage.getItem("diggo-theme") === "light") {
+                  document.documentElement.classList.add("light");
+                }
+              } catch (e) {}
+            `,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col font-sans antialiased">
         {children}
       </body>

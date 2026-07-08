@@ -1,7 +1,37 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Task 4's RGB-triplet tokens (--background, --surface, --foreground,
+ * --border, --accent, --accent-foreground) are the single source of truth.
+ * shadcn/ui's generated components expect Tailwind utilities like
+ * bg-background, border-border, bg-primary etc. to resolve to valid CSS
+ * colors, so this block maps shadcn's semantic names onto Task 4's tokens
+ * (wrapped in rgb()) instead of introducing a second OKLCH token scheme.
+ */
 @theme inline {
   --font-sans: var(--font-inter);
+
+  --color-background: rgb(var(--background));
+  --color-foreground: rgb(var(--foreground));
+  --color-card: rgb(var(--surface));
+  --color-card-foreground: rgb(var(--foreground));
+  --color-popover: rgb(var(--surface));
+  --color-popover-foreground: rgb(var(--foreground));
+  --color-primary: rgb(var(--accent));
+  --color-primary-foreground: rgb(var(--accent-foreground));
+  --color-secondary: rgb(var(--surface));
+  --color-secondary-foreground: rgb(var(--foreground));
+  --color-muted: rgb(var(--surface));
+  --color-muted-foreground: rgb(var(--foreground));
+  --color-accent: rgb(var(--accent));
+  --color-accent-foreground: rgb(var(--accent-foreground));
+  --color-destructive: #ef4444;
+  --color-border: rgb(var(--border));
+  --color-input: rgb(var(--border));
+  --color-ring: rgb(var(--accent));
 }
 
 :root {

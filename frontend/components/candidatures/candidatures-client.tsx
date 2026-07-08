@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { OffersResponse, OfferDetailResponse } from "@/lib/types";
 import { gradeColor, statusColor } from "@/lib/status-colors";
@@ -50,7 +50,16 @@ export function CandidaturesClient() {
     q: "",
     sal_min: "",
   });
+  const [searchInput, setSearchInput] = useState<string>("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  // Debounce search input by 300ms before updating the query cache key
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setFilters((f) => ({ ...f, q: searchInput }));
+    }, 300);
+    return () => clearTimeout(timeoutId);
+  }, [searchInput]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["offers", filters],
@@ -91,10 +100,8 @@ export function CandidaturesClient() {
             <input
               type="text"
               placeholder="🔍  Rechercher entreprise ou rôle..."
-              value={filters.q}
-              onChange={(e) =>
-                setFilters((f) => ({ ...f, q: e.target.value }))
-              }
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="w-full text-sm rounded-lg px-3 py-2 bg-background border border-border text-foreground focus:outline-none focus:border-primary"
             />
             <div className="flex gap-2">

@@ -17,6 +17,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `frontend/components/theme-toggle.tsx` — dark/light toggle persisted to `localStorage`, FOUC-free via an inline bootstrap script in the root layout
 - `frontend/app/page.tsx` — proof-of-wiring home page that calls `/api/me` (works once served through the new proxy, Task 7)
 - `frontend/Dockerfile` — multi-stage build (deps → build → run) producing a lean standalone Next.js image; `frontend/.dockerignore` excludes `node_modules`, `.next`, `.git`
+- `proxy/nginx.conf` — reverse proxy config routing `/api/*` to the FastAPI service; the default `/` still goes to `api` until pages migrate to `web`
+
+### Changed
+- `docker-compose.yml` — split the single `dashboard` service into `api`, `web`, and `proxy` (nginx); `proxy` now owns the host's port 8000, forwarding `/api/*` and everything else to `api` unchanged
 
 ## 2026-07-08
 

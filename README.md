@@ -10,8 +10,8 @@ Automated AI/ML job search pipeline for the French market — scraping, scoring,
 # 1. Start the local auth + DB stack (must be running before the dashboard)
 supabase start
 
-# 2. Start the dashboard
-docker compose up dashboard
+# 2. Start the stack (API + frontend + proxy)
+docker compose up api web proxy
 
 # → http://localhost:8000  (log in with your Supabase account)
 ```
@@ -100,10 +100,10 @@ cp config/ats_map.yaml.example  config/ats_map.yaml  # direct ATS URLs to monito
 
 > **Note:** `settings.yaml` and `ats_map.yaml` are read once on first login and migrated into the database. After that, edit them via the **Paramètres** page in the dashboard (`/settings`). The files serve as the initial seed only.
 
-### 6. Start the dashboard
+### 6. Start the stack
 
 ```bash
-docker compose up dashboard
+docker compose up api web proxy
 # → http://localhost:8000
 ```
 
@@ -210,7 +210,7 @@ The `scripts/backfill_descriptions.py` script recovers missing descriptions with
 | Indeed | Playwright with canonical URL | Yes (Cloudflare) |
 
 ```bash
-docker compose exec dashboard python3 scripts/backfill_descriptions.py
+docker compose exec api python3 scripts/backfill_descriptions.py
 ```
 
 ---
@@ -218,17 +218,17 @@ docker compose exec dashboard python3 scripts/backfill_descriptions.py
 ## Docker
 
 ```bash
-# Start the dashboard (recommended)
-docker compose up dashboard
+# Start the full stack (API + frontend + proxy)
+docker compose up api web proxy
 
 # One-shot pipeline run (scrape + score + import)
 docker compose --profile manual run --rm pipeline
 
 # Backfill missing descriptions
-docker compose exec dashboard python3 scripts/backfill_descriptions.py
+docker compose exec api python3 scripts/backfill_descriptions.py
 ```
 
-The dashboard container connects to the host-side Supabase CLI stack via `host.docker.internal`.
+The stack is now three services behind a single nginx proxy on `127.0.0.1:8000`: `api` (FastAPI, business logic + JSON endpoints under `/api/*`), `web` (Next.js frontend), `proxy` (nginx, routes `/api/*` to `api`, everything else to `api` for now — pages move to `web` incrementally). The `api` container connects to the host-side Supabase CLI stack via `host.docker.internal`.
 
 ---
 

@@ -25,7 +25,11 @@ services:
     restart: unless-stopped
 
   web:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
     environment:
       # ponytail: Next.js standalone server.js binds to $HOSTNAME, which Docker
       # auto-sets to the container ID; force it so the server listens on all

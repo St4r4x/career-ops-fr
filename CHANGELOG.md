@@ -30,6 +30,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `docker-compose.yml` — added healthchecks to `api` (`python3 -c urllib.request.urlopen(.../api/health)`) and `web` (`node -e require('http').get(...)`), and changed `proxy`'s `depends_on` to `condition: service_healthy` for both, so nginx no longer starts before its upstreams are actually accepting connections on a cold boot; also pinned `web`'s `HOSTNAME=0.0.0.0` since Next.js standalone's `server.js` otherwise binds to the container-ID hostname Docker injects, which made it unreachable on `localhost` (and thus unhealthy)
 - `dashboard/api.py` — moved `POST`/`DELETE /auth/session` to `/api/auth/session`, so nginx can route it alongside the rest of the JSON API without colliding with the `/auth/confirm`/`/auth/reset-password` pages moving to the Next.js frontend
 - `dashboard/templates/base.html` — updated logout button fetch URL to `/api/auth/session`
+- `proxy/nginx.conf` — added `/login`, `/signup`, `/auth/confirm`, `/auth/reset-password` location blocks routing to `web`; every other path still routes to `api` unchanged
+- `docker-compose.yml`, `frontend/Dockerfile` — `web`'s build now receives `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` as build args, inlined into the client bundle at `npm run build` time
 
 ### Removed
 - `dashboard/app.py`, `dashboard/templates/auth/*.html` — deleted the Jinja2-rendered `/login`, `/signup`, `/auth/confirm`, `/auth/reset-password` pages now that nginx routes those paths to the Next.js frontend instead

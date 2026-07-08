@@ -21,6 +21,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 - `docker-compose.yml` — split the single `dashboard` service into `api`, `web`, and `proxy` (nginx); `proxy` now owns the host's port 8000, forwarding `/api/*` and everything else to `api` unchanged
+- `docker-compose.yml` — added healthchecks to `api` (`python3 -c urllib.request.urlopen(.../api/health)`) and `web` (`node -e require('http').get(...)`), and changed `proxy`'s `depends_on` to `condition: service_healthy` for both, so nginx no longer starts before its upstreams are actually accepting connections on a cold boot; also pinned `web`'s `HOSTNAME=0.0.0.0` since Next.js standalone's `server.js` otherwise binds to the container-ID hostname Docker injects, which made it unreachable on `localhost` (and thus unhealthy)
 
 ## 2026-07-08
 

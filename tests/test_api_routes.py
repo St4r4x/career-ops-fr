@@ -2,6 +2,7 @@ import os
 import sys
 from pathlib import Path
 
+import psycopg2
 import pytest
 
 os.environ.setdefault("SUPABASE_JWT_SECRET", "test-secret-32-chars-minimum-ok!")
@@ -12,6 +13,80 @@ from fastapi.testclient import TestClient
 
 MOCK_USER = {"sub": "test-user-uuid-fixture", "email": "test@example.com"}
 
+PG_URL = os.getenv(
+    "DATABASE_URL", "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+)
+
+_CREATE_TEMP = """
+CREATE TEMP TABLE applications (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL DEFAULT 'test-user-uuid-fixture',
+    company TEXT NOT NULL,
+    role TEXT NOT NULL,
+    offer_url TEXT NOT NULL DEFAULT '',
+    detection_date TEXT NOT NULL,
+    score_grade TEXT NOT NULL DEFAULT '',
+    score_value FLOAT NOT NULL DEFAULT 0.0,
+    status TEXT NOT NULL DEFAULT 'À envoyer',
+    send_date TEXT,
+    contacts TEXT NOT NULL DEFAULT '',
+    notes TEXT NOT NULL DEFAULT '',
+    cv_path TEXT NOT NULL DEFAULT '',
+    cover_letter_path TEXT NOT NULL DEFAULT '',
+    prep_sheet_path TEXT NOT NULL DEFAULT '',
+    follow_up_date TEXT,
+    description TEXT NOT NULL DEFAULT '',
+    portal TEXT NOT NULL DEFAULT ''
+)
+"""
+
+
+def _make_pg_db():
+    from db import DB
+
+    conn = psycopg2.connect(PG_URL)
+    conn.autocommit = False
+    with conn.cursor() as cur:
+        cur.execute(_CREATE_TEMP)
+    conn.commit()
+    return DB(conn)
+
+
+def _insert_row(
+    db,
+    company: str = "Acme",
+    role: str = "ML Engineer",
+    offer_url: str = "https://example.com/1",
+    detection_date: str = "2026-05-25",
+    score_grade: str = "B",
+    score_value: float = 4.0,
+    status: str = "À envoyer",
+    send_date: str | None = None,
+    user_id: str = MOCK_USER["sub"],
+    description: str = "",
+) -> int:
+    with db.conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO applications (user_id, company, role, offer_url, detection_date,"
+            " score_grade, score_value, status, send_date, description) VALUES"
+            " (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id",
+            (
+                user_id,
+                company,
+                role,
+                offer_url,
+                detection_date,
+                score_grade,
+                score_value,
+                status,
+                send_date,
+                description,
+            ),
+        )
+        row_id = cur.fetchone()[0]
+    db.conn.commit()
+    return row_id
+
 
 @pytest.fixture
 def client():
@@ -20,6 +95,39 @@ def client():
 
     yield TestClient(dashboard_app.app)
     dashboard_app.app.dependency_overrides.pop(get_current_user_api, None)
+
+
+@pytest.fixture
+def client_with_offers():
+    import app as dashboard_app
+    from auth import require_onboarding_complete_api
+
+    test_db = _make_pg_db()
+    dashboard_app.app.state.db = test_db
+    dashboard_app.app.dependency_overrides[require_onboarding_complete_api] = lambda: (
+        MOCK_USER
+    )
+    _insert_row(
+        test_db,
+        company="Mistral AI",
+        offer_url="https://jobs.lever.co/mistral/1",
+        score_grade="B",
+        score_value=4.0,
+        status="À envoyer",
+        description="Ingénieur ML pour l'équipe recherche.",
+    )
+    _insert_row(
+        test_db,
+        company="Doctrine",
+        offer_url="https://jobs.lever.co/doctrine/1",
+        detection_date="2026-05-24",
+        score_grade="A",
+        score_value=4.5,
+        status="Envoyée",
+    )
+    yield TestClient(dashboard_app.app)
+    dashboard_app.app.dependency_overrides.pop(require_onboarding_complete_api, None)
+    test_db.close()
 
 
 def test_health_returns_ok_without_auth(client) -> None:
@@ -72,3 +180,58 @@ def test_session_delete_clears_cookies(client) -> None:
     response = client.delete("/api/auth/session", follow_redirects=False)
     assert response.status_code == 302
     assert response.headers["location"] == "/login"
+
+
+def test_list_offers_returns_200_with_offers(client_with_offers) -> None:
+    response = client_with_offers.get("/api/offers")
+    assert response.status_code == 200
+    body = response.json()
+    companies = {o["company"] for o in body["offers"]}
+    assert companies == {"Mistral AI", "Doctrine"}
+
+
+def test_list_offers_filters_by_status(client_with_offers) -> None:
+    response = client_with_offers.get("/api/offers?status=Envoyée")
+    companies = {o["company"] for o in response.json()["offers"]}
+    assert companies == {"Doctrine"}
+
+
+def test_list_offers_filters_by_grade(client_with_offers) -> None:
+    response = client_with_offers.get("/api/offers?grade=A")
+    companies = {o["company"] for o in response.json()["offers"]}
+    assert companies == {"Doctrine"}
+
+
+def test_list_offers_filters_by_search(client_with_offers) -> None:
+    response = client_with_offers.get("/api/offers?q=mistral")
+    companies = {o["company"] for o in response.json()["offers"]}
+    assert companies == {"Mistral AI"}
+
+
+def test_list_offers_includes_statuses_and_followup_ids(client_with_offers) -> None:
+    response = client_with_offers.get("/api/offers")
+    body = response.json()
+    assert "À envoyer" in body["statuses"]
+    assert body["followup_ids"] == []
+
+
+def test_list_offers_requires_auth(client) -> None:
+    response = client.get("/api/offers")
+    assert response.status_code == 401
+
+
+def test_get_offer_returns_200_for_existing(client_with_offers) -> None:
+    import app as dashboard_app
+
+    db = dashboard_app.app.state.db
+    row = db.get_all({}, user_id=MOCK_USER["sub"])[0]
+    response = client_with_offers.get(f"/api/offers/{row['id']}")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["offer"]["company"] == row["company"]
+    assert "mission" in body["description"]
+
+
+def test_get_offer_returns_404_for_missing(client_with_offers) -> None:
+    response = client_with_offers.get("/api/offers/999")
+    assert response.status_code == 404

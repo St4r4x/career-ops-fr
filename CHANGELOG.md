@@ -25,6 +25,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `frontend/app/auth/confirm/page.tsx` — static "check your email" page, reproducing the former Jinja2 page verbatim
 - `frontend/app/auth/reset-password/page.tsx` — new-password form, listens for Supabase's `PASSWORD_RECOVERY` event, redirects to `/login` 1.5s after success
 - `frontend/app/page.tsx` — real landing page (replaces the Frontend Foundations proof-of-wiring content): SSR auth check via `INTERNAL_API_URL`/`/api/me`, redirects authenticated visitors to `/candidatures`, otherwise renders the marketing page (hero, 4 feature cards, "Comment ça marche", footer CTA) on the design system, with copy generalized for the broadened cadres-multi-secteurs audience (no more explicit Greenhouse/Lever/Ashby naming)
+- `dashboard/api.py` — `GET /api/offers` (filtered list) and `GET /api/offers/{offer_id}` (detail), the read side of the Candidatures page's JSON API
+- `dashboard/auth.py` — `require_onboarding_complete_api()`, a 403-JSON sibling of `require_onboarding_complete` for `/api/*` routes that need the onboarding gate
 
 ### Changed
 - `docker-compose.yml` — split the single `dashboard` service into `api`, `web`, and `proxy` (nginx); `proxy` now owns the host's port 8000, forwarding `/api/*` and everything else to `api` unchanged
@@ -35,6 +37,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `docker-compose.yml`, `frontend/Dockerfile` — `web`'s build now receives `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` as build args, inlined into the client bundle at `npm run build` time
 - `proxy/nginx.conf` — added `location = /` (exact match) routing to `web`; every other path, including all subpaths, still routes to `api` unchanged
 - `docker-compose.yml` — `web` service gets `INTERNAL_API_URL=http://api:8000`, used server-side by the new landing page's SSR auth check
+- `dashboard/db.py` — added `parse_description()`, moved from `dashboard/app.py`'s private `_parse_description` so both `app.py` and `api.py` can use it without a circular import
 
 ### Fixed
 - `proxy/nginx.conf` — added a `/_next/` location block routing to `web`. Next.js's own runtime assets (JS/CSS chunks, self-hosted fonts) are requested under `/_next/static/*` regardless of which page loaded them, but nginx had no block for that prefix — it fell through to the default `/` block (routed to `api`), which 404'd every asset. The migrated auth pages loaded as bare unstyled HTML until this was added.

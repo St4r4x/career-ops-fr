@@ -239,6 +239,87 @@ def test_require_onboarding_complete_redirects_to_settings_when_only_hf_token_in
     assert exc.value.headers["location"] == "/settings"
 
 
+def test_require_onboarding_complete_api_passes_through_when_complete(
+    monkeypatch,
+) -> None:
+    import auth
+    from auth import require_onboarding_complete_api
+
+    secret = os.environ["SUPABASE_JWT_SECRET"]
+    token = _make_token(secret)
+    monkeypatch.setattr(
+        auth.user_data,
+        "get_onboarding_state",
+        lambda conn, user_id: {
+            "is_complete": True,
+            "profile_complete": True,
+            "search_complete": True,
+            "hf_token_complete": True,
+        },
+    )
+    request = _request_with_cookie_and_app(token, conn=object())
+    result = require_onboarding_complete_api(request)
+    assert result["sub"] == "user-uuid-123"
+
+
+def test_require_onboarding_complete_api_raises_403_with_profile_redirect(
+    monkeypatch,
+) -> None:
+    import auth
+    from auth import require_onboarding_complete_api
+    from fastapi import HTTPException
+
+    secret = os.environ["SUPABASE_JWT_SECRET"]
+    token = _make_token(secret)
+    monkeypatch.setattr(
+        auth.user_data,
+        "get_onboarding_state",
+        lambda conn, user_id: {
+            "is_complete": False,
+            "profile_complete": False,
+            "search_complete": False,
+            "hf_token_complete": False,
+        },
+    )
+    request = _request_with_cookie_and_app(token, conn=object())
+    with pytest.raises(HTTPException) as exc:
+        require_onboarding_complete_api(request)
+    assert exc.value.status_code == 403
+    assert exc.value.detail == {
+        "error": "onboarding_incomplete",
+        "redirect": "/profile",
+    }
+
+
+def test_require_onboarding_complete_api_raises_403_with_settings_redirect(
+    monkeypatch,
+) -> None:
+    import auth
+    from auth import require_onboarding_complete_api
+    from fastapi import HTTPException
+
+    secret = os.environ["SUPABASE_JWT_SECRET"]
+    token = _make_token(secret)
+    monkeypatch.setattr(
+        auth.user_data,
+        "get_onboarding_state",
+        lambda conn, user_id: {
+            "is_complete": False,
+            "profile_complete": True,
+            "search_complete": False,
+            "hf_token_complete": False,
+        },
+    )
+    request = _request_with_cookie_and_app(token, conn=object())
+    with pytest.raises(HTTPException) as exc:
+        require_onboarding_complete_api(request)
+    assert exc.value.status_code == 403
+    assert exc.value.detail == {
+        "error": "onboarding_incomplete",
+        "redirect": "/settings",
+    }
+
+
 def test_get_current_user_api_valid_token() -> None:
     from auth import get_current_user_api
 

@@ -21,7 +21,7 @@ from auth import (
     get_current_user,
     require_onboarding_complete,
 )
-from db import VALID_STATUSES, open_db
+from db import VALID_STATUSES, open_db, parse_description
 from env import load_env
 
 load_env()
@@ -78,26 +78,6 @@ def _build_funnel(
     all_counts = [s["count"] for s in funnel] + [s["count"] for s in exits]
     max_count = max(all_counts) if any(all_counts) else 1
     return funnel, exits, max_count
-
-
-def _parse_description(raw: str) -> dict:
-    """Return parsed description dict from JSON, or legacy text in mission field."""
-    if not raw:
-        return {}
-    try:
-        data = json.loads(raw)
-        if isinstance(data, dict):
-            return data
-    except json.JSONDecodeError:
-        pass
-    return {
-        "mission": raw,
-        "profil": "",
-        "stack": "",
-        "avantages": "",
-        "contrat": "",
-        "salaire": "",
-    }
 
 
 def _group_skills_by_category(skills: list[dict[str, Any]]) -> dict[str, list[str]]:
@@ -230,7 +210,7 @@ async def offer_detail(
         {
             "offer": offer,
             "statuses": VALID_STATUSES,
-            "parsed_desc": _parse_description(offer.get("description", "")),
+            "parsed_desc": parse_description(offer.get("description", "")),
         },
     )
 
@@ -284,7 +264,7 @@ async def offer_save(
         {
             "offer": offer,
             "statuses": VALID_STATUSES,
-            "parsed_desc": _parse_description(offer.get("description", "")),
+            "parsed_desc": parse_description(offer.get("description", "")),
         },
     )
 
@@ -338,7 +318,7 @@ async def offer_status(
         {
             "offer": offer,
             "statuses": VALID_STATUSES,
-            "parsed_desc": _parse_description(offer.get("description", "")),
+            "parsed_desc": parse_description(offer.get("description", "")),
         },
     )
 
@@ -373,7 +353,7 @@ async def offer_prepare(
             {
                 "offer": offer,
                 "statuses": VALID_STATUSES,
-                "parsed_desc": _parse_description(offer.get("description", "")),
+                "parsed_desc": parse_description(offer.get("description", "")),
                 "prep_error": message,
             },
         )
@@ -485,7 +465,7 @@ async def offer_prepare(
         {
             "offer": offer,
             "statuses": VALID_STATUSES,
-            "parsed_desc": _parse_description(offer.get("description", "")),
+            "parsed_desc": parse_description(offer.get("description", "")),
         },
     )
 

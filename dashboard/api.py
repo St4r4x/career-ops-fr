@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from auth import (
     CurrentUser,
     clear_auth_cookies,
     get_current_user_api,
+    require_onboarding_complete_api,
     set_auth_cookies,
     validate_access_token,
 )
+from db import VALID_STATUSES, parse_description
 
 router = APIRouter(prefix="/api")
 
@@ -42,3 +44,46 @@ async def auth_session_delete() -> RedirectResponse:
     response = RedirectResponse("/login", status_code=302)
     clear_auth_cookies(response)
     return response
+
+
+@router.get("/offers")
+async def list_offers(
+    request: Request,
+    current_user: CurrentUser = Depends(require_onboarding_complete_api),
+    status: str = Query(""),
+    grade: str = Query(""),
+    q: str = Query(""),
+    sal_min: str = Query(""),
+) -> dict:
+    db = request.app.state.db
+    user_id = current_user["sub"]
+    filters = {
+        k: v
+        for k, v in {
+            "status": status,
+            "grade": grade,
+            "q": q,
+            "sal_min": sal_min,
+        }.items()
+        if v
+    }
+    offers = db.get_all(filters, user_id=user_id)
+    followup_ids = [f["id"] for f in db.get_followups(user_id=user_id)]
+    return {"offers": offers, "followup_ids": followup_ids, "statuses": VALID_STATUSES}
+
+
+@router.get("/offers/{offer_id}")
+async def get_offer(
+    request: Request,
+    offer_id: int,
+    current_user: CurrentUser = Depends(require_onboarding_complete_api),
+) -> dict:
+    db = request.app.state.db
+    user_id = current_user["sub"]
+    offer = db.get_by_id(offer_id, user_id=user_id)
+    if offer is None:
+        raise HTTPException(status_code=404, detail="Offer not found")
+    return {
+        "offer": offer,
+        "description": parse_description(offer.get("description", "")),
+    }

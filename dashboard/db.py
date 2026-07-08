@@ -22,6 +22,26 @@ def _parse_salary_min(text: str) -> int | None:
     return None
 
 
+def parse_description(raw: str) -> dict:
+    """Return parsed description dict from JSON, or legacy text in mission field."""
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+        if isinstance(data, dict):
+            return data
+    except json.JSONDecodeError:
+        pass
+    return {
+        "mission": raw,
+        "profil": "",
+        "stack": "",
+        "avantages": "",
+        "contrat": "",
+        "salaire": "",
+    }
+
+
 VALID_STATUSES = [
     "À envoyer",
     "Envoyée",

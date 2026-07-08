@@ -104,6 +104,26 @@ def require_onboarding_complete(request: Request) -> CurrentUser:
     raise HTTPException(status_code=302, headers={"location": "/settings"})
 
 
+def require_onboarding_complete_api(request: Request) -> CurrentUser:
+    """Like require_onboarding_complete, but raises a 403 with a JSON
+    {"redirect": ...} body instead of a 302 — for /api/* routes consumed
+    by the Next.js frontend."""
+    current_user = get_current_user_api(request)
+    conn = request.app.state.db.conn
+    state = user_data.get_onboarding_state(conn, current_user["sub"])
+    if state["is_complete"]:
+        return current_user
+    if not state["profile_complete"]:
+        raise HTTPException(
+            status_code=403,
+            detail={"error": "onboarding_incomplete", "redirect": "/profile"},
+        )
+    raise HTTPException(
+        status_code=403,
+        detail={"error": "onboarding_incomplete", "redirect": "/settings"},
+    )
+
+
 def set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
     secure = os.getenv("COOKIE_SECURE", "false").lower() == "true"
     response.set_cookie(

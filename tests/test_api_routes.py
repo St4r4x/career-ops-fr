@@ -869,3 +869,91 @@ def test_put_profile_cv_meta_invalid_lang_falls_back_to_fr(
 def test_put_profile_cv_meta_requires_auth(client) -> None:
     response = client.put("/api/profile/cv/meta", json={"summary": "x"})
     assert response.status_code == 401
+
+
+def test_put_profile_cv_experience_saves_entries(client_with_profile_mutations) -> None:
+    client, mocks = client_with_profile_mutations
+    entries = [
+        {
+            "title": "ML Engineer",
+            "company": "Acme",
+            "type": "CDI",
+            "period": "2022-2024",
+            "sort_order": 0,
+            "bullets": ["Did X"],
+        }
+    ]
+    response = client.put("/api/profile/cv/experience?lang=fr", json=entries)
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+    call_args = mocks["save_experience"].call_args[0]
+    assert call_args[2] == "fr"
+    assert call_args[3] == entries
+
+
+def test_put_profile_cv_experience_requires_auth(client) -> None:
+    response = client.put("/api/profile/cv/experience", json=[])
+    assert response.status_code == 401
+
+
+def test_delete_profile_cv_experience_calls_delete(
+    client_with_profile_mutations,
+) -> None:
+    client, mocks = client_with_profile_mutations
+    response = client.delete("/api/profile/cv/experience/42")
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+    call_args = mocks["delete_experience"].call_args[0]
+    assert call_args[1] == MOCK_USER["sub"]
+    assert call_args[2] == 42
+
+
+def test_delete_profile_cv_experience_requires_auth(client) -> None:
+    response = client.delete("/api/profile/cv/experience/1")
+    assert response.status_code == 401
+
+
+def test_put_profile_cv_skills_saves_entries(client_with_profile_mutations) -> None:
+    client, mocks = client_with_profile_mutations
+    entries = [{"category": "Langages", "skill": "Python", "sort_order": 0}]
+    response = client.put("/api/profile/cv/skills?lang=en", json=entries)
+    assert response.status_code == 200
+    call_args = mocks["save_skills"].call_args[0]
+    assert call_args[2] == "en"
+    assert call_args[3] == entries
+
+
+def test_put_profile_cv_skills_requires_auth(client) -> None:
+    response = client.put("/api/profile/cv/skills", json=[])
+    assert response.status_code == 401
+
+
+def test_put_profile_cv_certifications_saves_entries_without_lang(
+    client_with_profile_mutations,
+) -> None:
+    client, mocks = client_with_profile_mutations
+    entries = [{"name": "AWS SAA", "issuer": "AWS", "year": 2023}]
+    response = client.put("/api/profile/cv/certifications", json=entries)
+    assert response.status_code == 200
+    call_args = mocks["save_certifications"].call_args[0]
+    assert call_args[2] == entries
+
+
+def test_put_profile_cv_certifications_requires_auth(client) -> None:
+    response = client.put("/api/profile/cv/certifications", json=[])
+    assert response.status_code == 401
+
+
+def test_put_profile_cv_education_saves_entries(client_with_profile_mutations) -> None:
+    client, mocks = client_with_profile_mutations
+    entries = [{"degree": "MSc IA", "school": "Sorbonne", "year": 2021}]
+    response = client.put("/api/profile/cv/education?lang=fr", json=entries)
+    assert response.status_code == 200
+    call_args = mocks["save_education"].call_args[0]
+    assert call_args[2] == "fr"
+    assert call_args[3] == entries
+
+
+def test_put_profile_cv_education_requires_auth(client) -> None:
+    response = client.put("/api/profile/cv/education", json=[])
+    assert response.status_code == 401

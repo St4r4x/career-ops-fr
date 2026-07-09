@@ -349,3 +349,77 @@ async def update_profile_cv_meta(
     user_data.save_cv_meta(conn, user_id, lang, body.get("summary", ""))
     conn.commit()
     return {"ok": True}
+
+
+@router.put("/profile/cv/experience")
+async def update_profile_cv_experience(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user_api),
+    lang: str = Query("fr"),
+    entries: list = Body(...),
+) -> dict:
+    if lang not in ("fr", "en"):
+        lang = "fr"
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    user_data.save_experience(conn, user_id, lang, entries)
+    conn.commit()
+    return {"ok": True}
+
+
+@router.delete("/profile/cv/experience/{exp_id}")
+async def delete_profile_cv_experience(
+    request: Request,
+    exp_id: int,
+    current_user: CurrentUser = Depends(get_current_user_api),
+) -> dict:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    user_data.delete_experience(conn, user_id, exp_id)
+    conn.commit()
+    return {"ok": True}
+
+
+@router.put("/profile/cv/skills")
+async def update_profile_cv_skills(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user_api),
+    lang: str = Query("fr"),
+    entries: list = Body(...),
+) -> dict:
+    if lang not in ("fr", "en"):
+        lang = "fr"
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    user_data.save_skills(conn, user_id, lang, entries)
+    conn.commit()
+    return {"ok": True}
+
+
+@router.put("/profile/cv/certifications")
+async def update_profile_cv_certifications(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user_api),
+    entries: list = Body(...),
+) -> dict:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    user_data.save_certifications(conn, user_id, entries)
+    conn.commit()
+    return {"ok": True}
+
+
+@router.put("/profile/cv/education")
+async def update_profile_cv_education(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user_api),
+    lang: str = Query("fr"),
+    entries: list = Body(...),
+) -> dict:
+    if lang not in ("fr", "en"):
+        lang = "fr"
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    user_data.save_education(conn, user_id, lang, entries)
+    conn.commit()
+    return {"ok": True}

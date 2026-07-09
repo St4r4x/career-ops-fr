@@ -797,7 +797,9 @@ def test_get_profile_succeeds_without_completed_onboarding(
     assert response.json()["onboarding"]["is_complete"] is False
 
 
-def test_patch_profile_contact_saves_and_returns_ok(client_with_profile_mutations) -> None:
+def test_patch_profile_contact_saves_and_returns_ok(
+    client_with_profile_mutations,
+) -> None:
     client, mocks = client_with_profile_mutations
     response = client.patch(
         "/api/profile/contact",
@@ -817,6 +819,7 @@ def test_patch_profile_contact_saves_and_returns_ok(client_with_profile_mutation
     saved_data = mocks["save_profile"].call_args[0][2]
     assert saved_data["contact"]["name"] == "New Name"
     assert saved_data["contact"]["location"] == "Lyon"
+    assert saved_data["profile_md"] == "An experienced engineer."
 
 
 def test_patch_profile_contact_requires_auth(client) -> None:
@@ -833,6 +836,7 @@ def test_patch_profile_text_saves_profile_md(client_with_profile_mutations) -> N
     assert response.json() == {"ok": True}
     saved_data = mocks["save_profile"].call_args[0][2]
     assert saved_data["profile_md"] == "Updated résumé text."
+    assert saved_data["contact"]["name"] == "Test User"
 
 
 def test_patch_profile_text_requires_auth(client) -> None:

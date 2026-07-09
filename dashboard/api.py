@@ -3,7 +3,9 @@ from __future__ import annotations
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 
+import prepare_state
 import scan_state
+import user_data
 from auth import (
     CurrentUser,
     clear_auth_cookies,
@@ -137,3 +139,56 @@ async def get_scan_status_route(
     current_user: CurrentUser = Depends(require_onboarding_complete_api),
 ) -> dict:
     return scan_state.get_scan_state(current_user["sub"])
+
+
+@router.post("/offers/{offer_id}/prepare")
+async def start_prepare_route(
+    request: Request,
+    offer_id: int,
+    skip_prep: bool = Body(False, embed=True),
+    current_user: CurrentUser = Depends(require_onboarding_complete_api),
+) -> dict:
+    db = request.app.state.db
+    user_id = current_user["sub"]
+    offer = db.get_by_id(offer_id, user_id=user_id)
+    if offer is None:
+        raise HTTPException(status_code=404, detail="Offer not found")
+    if len(offer.get("description", "")) < prepare_state.MIN_OFFER_DESCRIPTION_LENGTH:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "description_too_short",
+                "message": (
+                    "Description trop courte pour préparer la candidature. "
+                    "Complète-la via les notes ou l'édition de l'offre avant "
+                    "de réessayer."
+                ),
+            },
+        )
+    hf_token = user_data.get_hf_token(db.conn, user_id)
+    if not hf_token:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "hf_token_missing",
+                "message": (
+                    "Ajoute ton token Hugging Face dans les paramètres avant "
+                    "de préparer une candidature."
+                ),
+            },
+        )
+    prepare_state.start_prepare(offer_id, user_id, skip_prep)
+    return {"status": "running"}
+
+
+@router.get("/offers/{offer_id}/prepare/status")
+async def get_prepare_status_route(
+    request: Request,
+    offer_id: int,
+    current_user: CurrentUser = Depends(require_onboarding_complete_api),
+) -> dict:
+    db = request.app.state.db
+    user_id = current_user["sub"]
+    if db.get_by_id(offer_id, user_id=user_id) is None:
+        raise HTTPException(status_code=404, detail="Offer not found")
+    return prepare_state.get_prepare_state(offer_id)

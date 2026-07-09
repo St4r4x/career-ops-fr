@@ -100,8 +100,12 @@ def client():
 @pytest.fixture
 def client_with_offers():
     import app as dashboard_app
+    import prepare_state
     from auth import require_onboarding_complete_api
 
+    prepare_state._status.clear()
+    prepare_state._stage.clear()
+    prepare_state._error.clear()
     test_db = _make_pg_db()
     dashboard_app.app.state.db = test_db
     dashboard_app.app.dependency_overrides[require_onboarding_complete_api] = lambda: (
@@ -418,3 +422,92 @@ def test_scan_state_isolated_per_user(client_scan, monkeypatch) -> None:
     }
     r2 = client_scan.get("/api/scan/status")
     assert r2.json()["status"] == "idle"
+
+
+_PREPARE_LONG_DESCRIPTION = (
+    "We need an ML engineer with PyTorch and RAG experience. " * 10
+)
+
+
+def test_prepare_start_returns_404_for_missing(client_with_offers) -> None:
+    response = client_with_offers.post("/api/offers/999/prepare")
+    assert response.status_code == 404
+
+
+def test_prepare_start_rejects_thin_description(client_with_offers) -> None:
+    import app as dashboard_app
+
+    db = dashboard_app.app.state.db
+    row = db.get_all({}, user_id=MOCK_USER["sub"])[0]
+    response = client_with_offers.post(f"/api/offers/{row['id']}/prepare")
+    assert response.status_code == 422
+    assert response.json()["detail"]["error"] == "description_too_short"
+
+
+def test_prepare_start_rejects_missing_hf_token(client_with_offers) -> None:
+    import app as dashboard_app
+
+    db = dashboard_app.app.state.db
+    offer_id = _insert_row(db, description=_PREPARE_LONG_DESCRIPTION)
+    response = client_with_offers.post(f"/api/offers/{offer_id}/prepare")
+    assert response.status_code == 422
+    assert response.json()["detail"]["error"] == "hf_token_missing"
+
+
+def test_prepare_start_succeeds_and_returns_running(
+    client_with_offers, monkeypatch
+) -> None:
+    import app as dashboard_app
+    import user_data
+
+    db = dashboard_app.app.state.db
+    offer_id = _insert_row(db, description=_PREPARE_LONG_DESCRIPTION)
+    monkeypatch.setattr(user_data, "get_hf_token", lambda conn, uid: "test-hf-token")
+    monkeypatch.setattr("asyncio.create_task", lambda coro: coro.close())
+
+    response = client_with_offers.post(f"/api/offers/{offer_id}/prepare")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "running"}
+
+
+def test_prepare_status_defaults_to_idle(client_with_offers) -> None:
+    import app as dashboard_app
+
+    db = dashboard_app.app.state.db
+    row = db.get_all({}, user_id=MOCK_USER["sub"])[0]
+    response = client_with_offers.get(f"/api/offers/{row['id']}/prepare/status")
+    assert response.status_code == 200
+    assert response.json()["status"] == "idle"
+
+
+def test_prepare_status_returns_404_for_missing(client_with_offers) -> None:
+    response = client_with_offers.get("/api/offers/999/prepare/status")
+    assert response.status_code == 404
+
+
+def test_prepare_requires_auth(client) -> None:
+    response = client.post("/api/offers/1/prepare")
+    assert response.status_code == 401
+    response = client.get("/api/offers/1/prepare/status")
+    assert response.status_code == 401
+
+
+def test_prepare_state_isolated_per_offer_via_route(
+    client_with_offers, monkeypatch
+) -> None:
+    import app as dashboard_app
+    import user_data
+
+    db = dashboard_app.app.state.db
+    offer_a = _insert_row(db, description=_PREPARE_LONG_DESCRIPTION)
+    offer_b = _insert_row(db, description=_PREPARE_LONG_DESCRIPTION)
+    monkeypatch.setattr(user_data, "get_hf_token", lambda conn, uid: "test-hf-token")
+    monkeypatch.setattr("asyncio.create_task", lambda coro: coro.close())
+
+    client_with_offers.post(f"/api/offers/{offer_a}/prepare")
+
+    r_a = client_with_offers.get(f"/api/offers/{offer_a}/prepare/status")
+    r_b = client_with_offers.get(f"/api/offers/{offer_b}/prepare/status")
+    assert r_a.json()["status"] == "running"
+    assert r_b.json()["status"] == "idle"

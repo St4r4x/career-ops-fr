@@ -43,6 +43,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `dashboard/api.py` — `GET /api/stats` (pipeline stats, funnel with conversion rates, latest daily report as HTML), the JSON API the migrated Stats page will consume
 - `frontend/app/stats/page.tsx`, `frontend/components/stats/stats-client.tsx` — the Stats page (summary cards, funnel with conversion rates, per-status breakdown, latest daily report), reproducing the former Jinja2 `stats.html`'s layout and copy on the design system
 - `frontend/lib/session.ts` — shared `getSessionUser()` SSR auth-check helper, extracted from `candidatures/page.tsx` (now the second page needing it) and reused by the new Stats page
+- `dashboard/api.py` — `GET /api/profile` (contact info, résumé, FR/EN CV, onboarding state), the JSON API the migrated Profile page will consume. Gated by `get_current_user_api` only — no onboarding-completion requirement, since Profile is where onboarding gets completed
 
 ### Changed
 - `docker-compose.yml` — split the single `dashboard` service into `api`, `web`, and `proxy` (nginx); `proxy` now owns the host's port 8000, forwarding `/api/*` and everything else to `api` unchanged

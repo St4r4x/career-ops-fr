@@ -17,6 +17,53 @@ PG_URL = os.getenv(
     "DATABASE_URL", "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
 )
 
+FAKE_PROFILE = {
+    "contact": {
+        "name": "Test User",
+        "title": "AI Engineer",
+        "email": "test@example.com",
+        "phone": "+33 6 00 00 00 00",
+        "location": "Paris",
+        "linkedin": "",
+        "github": "github.com/testuser",
+    },
+    "profile_md": "An experienced engineer.",
+    "summary": "",
+    "experience": [],
+    "skills": {},
+    "education": [],
+    "certifications": [],
+    "projects": [],
+}
+
+FAKE_CV = {
+    "meta": {"summary": "Résumé test."},
+    "experience": [
+        {
+            "id": 1,
+            "title": "ML Engineer",
+            "company": "Acme",
+            "type": "CDI",
+            "period": "2022-2024",
+            "sort_order": 0,
+            "bullets": ["Built things", "Shipped things"],
+        }
+    ],
+    "skills": [
+        {"id": 1, "category": "Langages", "skill": "Python", "sort_order": 0},
+        {"id": 2, "category": "Langages", "skill": "TypeScript", "sort_order": 1},
+    ],
+    "certifications": [{"id": 1, "name": "AWS SAA", "issuer": "AWS", "year": 2023}],
+    "education": [{"id": 1, "degree": "MSc IA", "school": "Sorbonne", "year": 2021}],
+}
+
+FAKE_ONBOARDING = {
+    "is_complete": True,
+    "profile_complete": True,
+    "search_complete": True,
+    "hf_token_complete": True,
+}
+
 _CREATE_TEMP = """
 CREATE TEMP TABLE applications (
     id SERIAL PRIMARY KEY,
@@ -149,6 +196,32 @@ def client_scan():
     dashboard_app.app.dependency_overrides.pop(require_onboarding_complete_api, None)
     scan_state._status.clear()
     scan_state._result.clear()
+
+
+@pytest.fixture
+def client_with_profile(monkeypatch):
+    import app as dashboard_app
+    import profile_parser
+    import user_data
+    from auth import get_current_user_api
+    from unittest.mock import MagicMock
+
+    monkeypatch.setattr(
+        profile_parser, "load_profile", lambda conn, user_id: dict(FAKE_PROFILE)
+    )
+    monkeypatch.setattr(
+        user_data, "get_cv", lambda conn, user_id, lang="fr": dict(FAKE_CV)
+    )
+    monkeypatch.setattr(
+        user_data, "get_onboarding_state", lambda conn, user_id: dict(FAKE_ONBOARDING)
+    )
+    mock_conn = MagicMock()
+    mock_db = MagicMock()
+    mock_db.conn = mock_conn
+    dashboard_app.app.state.db = mock_db
+    dashboard_app.app.dependency_overrides[get_current_user_api] = lambda: MOCK_USER
+    yield TestClient(dashboard_app.app)
+    dashboard_app.app.dependency_overrides.pop(get_current_user_api, None)
 
 
 def test_health_returns_ok_without_auth(client) -> None:
@@ -642,3 +715,45 @@ def test_get_stats_report_fields_populated_from_latest_file(
     assert body["latest_report_date"] == "2026-07-03"
     assert "New report" in body["latest_report_html"]
     assert "Old report" not in body["latest_report_html"]
+
+
+def test_get_profile_returns_200_with_data(client_with_profile) -> None:
+    response = client_with_profile.get("/api/profile")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["profile"]["contact"]["name"] == "Test User"
+    assert body["profile"]["profile_md"] == "An experienced engineer."
+    assert body["cv"] == FAKE_CV
+    assert body["cv_en"] == FAKE_CV
+    assert body["onboarding"] == FAKE_ONBOARDING
+
+
+def test_get_profile_strips_dead_compat_keys(client_with_profile) -> None:
+    response = client_with_profile.get("/api/profile")
+    body = response.json()
+    assert set(body["profile"].keys()) == {"contact", "profile_md"}
+
+
+def test_get_profile_requires_auth(client) -> None:
+    response = client.get("/api/profile")
+    assert response.status_code == 401
+
+
+def test_get_profile_succeeds_without_completed_onboarding(
+    client_with_profile, monkeypatch
+) -> None:
+    import user_data
+
+    monkeypatch.setattr(
+        user_data,
+        "get_onboarding_state",
+        lambda conn, user_id: {
+            "is_complete": False,
+            "profile_complete": False,
+            "search_complete": False,
+            "hf_token_complete": False,
+        },
+    )
+    response = client_with_profile.get("/api/profile")
+    assert response.status_code == 200
+    assert response.json()["onboarding"]["is_complete"] is False

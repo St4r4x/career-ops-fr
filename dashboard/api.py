@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 import mistune
 
 import prepare_state
+import profile_parser
 import scan_state
 import user_data
 from auth import (
@@ -271,4 +272,26 @@ async def get_stats_route(
         "max_count": max_count,
         "latest_report_html": latest_report_html,
         "latest_report_date": latest_report_date,
+    }
+
+
+@router.get("/profile")
+async def get_profile_route(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user_api),
+) -> dict:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    profile = profile_parser.load_profile(conn, user_id)
+    cv = user_data.get_cv(conn, user_id, lang="fr")
+    cv_en = user_data.get_cv(conn, user_id, lang="en")
+    onboarding = user_data.get_onboarding_state(conn, user_id)
+    return {
+        "profile": {
+            "contact": profile["contact"],
+            "profile_md": profile["profile_md"],
+        },
+        "cv": cv,
+        "cv_en": cv_en,
+        "onboarding": onboarding,
     }

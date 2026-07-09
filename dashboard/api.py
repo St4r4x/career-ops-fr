@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 
+import scan_state
 from auth import (
     CurrentUser,
     clear_auth_cookies,
@@ -12,7 +13,6 @@ from auth import (
     validate_access_token,
 )
 from db import VALID_STATUSES, parse_description
-import scan_state
 
 router = APIRouter(prefix="/api")
 

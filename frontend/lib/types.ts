@@ -57,3 +57,31 @@ export type PrepareStatusResponse = {
   stage: string;
   error: string;
 };
+
+export type FunnelStep = {
+  status: string;
+  count: number;
+  rate: number | null;
+};
+
+export type ExitStep = {
+  status: string;
+  count: number;
+};
+
+export type Stats = {
+  total: number;
+  response_rate: number;
+  interview_count: number;
+  stale_count: number;
+  by_status: Record<string, number>;
+};
+
+export type StatsResponse = {
+  stats: Stats;
+  funnel: FunnelStep[];
+  exits: ExitStep[];
+  max_count: number;
+  latest_report_html: string | null;
+  latest_report_date: string | null;
+};

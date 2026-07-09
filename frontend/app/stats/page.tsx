@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { DashboardNav } from "@/components/dashboard-nav";
-import { CandidaturesClient } from "@/components/candidatures/candidatures-client";
+import { StatsClient } from "@/components/stats/stats-client";
 import { getSessionUser } from "@/lib/session";
 
-export default async function CandidaturesPage() {
+export default async function StatsPage() {
   const user = await getSessionUser();
   if (!user) {
     redirect("/login");
@@ -11,9 +11,9 @@ export default async function CandidaturesPage() {
 
   return (
     <div className="flex flex-col h-screen">
-      <DashboardNav email={user.email} activePath="/candidatures" />
+      <DashboardNav email={user.email} activePath="/stats" />
       <div className="flex-1 min-h-0">
-        <CandidaturesClient />
+        <StatsClient />
       </div>
     </div>
   );

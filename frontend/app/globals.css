@@ -56,3 +56,36 @@ body {
   background-color: rgb(var(--background));
   color: rgb(var(--foreground));
 }
+
+.prose-report h1,
+.prose-report h2,
+.prose-report h3 {
+  color: rgb(var(--foreground));
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+.prose-report h1 {
+  font-size: 1.1rem;
+}
+.prose-report h2 {
+  font-size: 1rem;
+}
+.prose-report h3 {
+  font-size: 0.9rem;
+}
+.prose-report strong {
+  color: rgb(var(--foreground));
+}
+.prose-report a {
+  color: rgb(var(--accent));
+  text-decoration: underline;
+}
+.prose-report hr {
+  border-color: rgb(var(--border));
+  margin: 0.75rem 0;
+}
+.prose-report ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}

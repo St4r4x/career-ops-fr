@@ -12,6 +12,7 @@ from auth import (
     validate_access_token,
 )
 from db import VALID_STATUSES, parse_description
+import scan_state
 
 router = APIRouter(prefix="/api")
 
@@ -121,3 +122,18 @@ async def delete_offer(
         raise HTTPException(status_code=404, detail="Offer not found")
     db.delete(offer_id, user_id=user_id)
     return {"ok": True}
+
+
+@router.post("/scan/start")
+async def start_scan_route(
+    current_user: CurrentUser = Depends(require_onboarding_complete_api),
+) -> dict:
+    scan_state.start_scan(current_user["sub"])
+    return {"status": "running"}
+
+
+@router.get("/scan/status")
+async def get_scan_status_route(
+    current_user: CurrentUser = Depends(require_onboarding_complete_api),
+) -> dict:
+    return scan_state.get_scan_state(current_user["sub"])

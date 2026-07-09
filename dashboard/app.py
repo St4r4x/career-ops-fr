@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 from contextlib import asynccontextmanager
@@ -90,21 +89,11 @@ def _group_skills_by_category(skills: list[dict[str, Any]]) -> dict[str, list[st
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.db = open_db(_DATABASE_URL)
-    app.state.scan_status = "idle"
-    app.state.scan_result: dict = {
-        "inserted": 0,
-        "skipped": 0,
-        "found": 0,
-        "scored": 0,
-        "abandoned": 0,
-        "error": "",
-    }
     yield
     app.state.db.close()
 
 
 app = FastAPI(lifespan=lifespan)
-_scan_lock = asyncio.Lock()
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 templates.env.globals["STATUS_COLORS"] = STATUS_COLORS
@@ -674,103 +663,4 @@ async def settings_delete_hf_token(
         request,
         "partials/settings_hf_token.html",
         {"hf_token_set": False},
-    )
-
-
-async def _run_scan_task(app_state: Any, user_id: str) -> None:
-    try:
-        from scripts.import_offers import (
-            _run_pipeline,
-            expire_stale_offers,
-            import_offers,
-        )
-        from scripts.pre_filter import load_settings
-
-        settings = load_settings(user_id=user_id)
-        app_state.scan_result = {
-            "inserted": 0,
-            "skipped": 0,
-            "found": 0,
-            "scored": 0,
-            "abandoned": 0,
-            "error": "",
-        }
-
-        offers = await _run_pipeline(settings, user_id=user_id)
-        app_state.scan_result["found"] = len(offers)
-        app_state.scan_result["scored"] = len(offers)
-
-        inserted, skipped = import_offers(offers, user_id=user_id)
-        abandoned = expire_stale_offers(user_id=user_id)
-
-        app_state.scan_result = {
-            "inserted": inserted,
-            "skipped": skipped,
-            "found": len(offers),
-            "scored": len(offers),
-            "abandoned": abandoned,
-            "error": "",
-        }
-        app_state.scan_status = "done"
-    except Exception as exc:
-        app_state.scan_result = {
-            "inserted": 0,
-            "skipped": 0,
-            "found": 0,
-            "scored": 0,
-            "abandoned": 0,
-            "error": str(exc).splitlines()[0],
-        }
-        app_state.scan_status = "error"
-
-
-def _start_scan(app_state: Any, user_id: str) -> bool:
-    """Set state to running and enqueue task. Returns False if already running."""
-    if app_state.scan_status == "running":
-        return False
-    app_state.scan_status = "running"
-    app_state.scan_result = {
-        "inserted": 0,
-        "skipped": 0,
-        "found": 0,
-        "scored": 0,
-        "abandoned": 0,
-        "error": "",
-    }
-    asyncio.create_task(_run_scan_task(app_state, user_id))
-    return True
-
-
-@app.post("/scan/start", response_class=HTMLResponse)
-async def scan_start(
-    request: Request,
-    current_user: CurrentUser = Depends(require_onboarding_complete),
-) -> HTMLResponse:
-    async with _scan_lock:
-        started = _start_scan(request.app.state, user_id=current_user["sub"])
-        if not started:
-            return templates.TemplateResponse(
-                request,
-                "partials/scan_status.html",
-                {"status": "running", "result": request.app.state.scan_result},
-            )
-    return templates.TemplateResponse(
-        request,
-        "partials/scan_status.html",
-        {"status": "running", "result": request.app.state.scan_result},
-    )
-
-
-@app.get("/scan/status", response_class=HTMLResponse)
-async def scan_status(
-    request: Request,
-    current_user: CurrentUser = Depends(get_current_user),
-) -> HTMLResponse:
-    return templates.TemplateResponse(
-        request,
-        "partials/scan_status.html",
-        {
-            "status": request.app.state.scan_status,
-            "result": request.app.state.scan_result,
-        },
     )

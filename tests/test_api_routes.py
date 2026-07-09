@@ -130,6 +130,23 @@ def client_with_offers():
     test_db.close()
 
 
+@pytest.fixture
+def client_scan():
+    import app as dashboard_app
+    import scan_state
+    from auth import require_onboarding_complete_api
+
+    scan_state._status.clear()
+    scan_state._result.clear()
+    dashboard_app.app.dependency_overrides[require_onboarding_complete_api] = lambda: (
+        MOCK_USER
+    )
+    yield TestClient(dashboard_app.app)
+    dashboard_app.app.dependency_overrides.pop(require_onboarding_complete_api, None)
+    scan_state._status.clear()
+    scan_state._result.clear()
+
+
 def test_health_returns_ok_without_auth(client) -> None:
     response = client.get("/api/health")
     assert response.status_code == 200
@@ -333,3 +350,71 @@ def test_delete_offer_returns_404_for_missing(client_with_offers) -> None:
 def test_delete_offer_requires_auth(client) -> None:
     response = client.delete("/api/offers/1")
     assert response.status_code == 401
+
+
+def test_scan_status_idle_by_default(client_scan) -> None:
+    response = client_scan.get("/api/scan/status")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "idle"
+    assert body["result"]["inserted"] == 0
+
+
+def test_scan_start_returns_running(client_scan, monkeypatch) -> None:
+    monkeypatch.setattr("asyncio.create_task", lambda coro: coro.close())
+    response = client_scan.post("/api/scan/start")
+    assert response.status_code == 200
+    assert response.json() == {"status": "running"}
+
+
+def test_scan_start_when_already_running_is_noop(client_scan, monkeypatch) -> None:
+    created = []
+    monkeypatch.setattr(
+        "asyncio.create_task",
+        lambda coro: created.append(coro) or coro.close(),
+    )
+    r1 = client_scan.post("/api/scan/start")
+    r2 = client_scan.post("/api/scan/start")
+    assert r1.status_code == 200
+    assert r2.status_code == 200
+    assert r1.json() == {"status": "running"}
+    assert r2.json() == {"status": "running"}
+    assert len(created) == 1
+
+
+def test_scan_status_after_start_returns_running(client_scan, monkeypatch) -> None:
+    monkeypatch.setattr("asyncio.create_task", lambda coro: coro.close())
+    client_scan.post("/api/scan/start")
+    response = client_scan.get("/api/scan/status")
+    assert response.json()["status"] == "running"
+
+
+def test_scan_status_requires_auth(client) -> None:
+    response = client.get("/api/scan/status")
+    assert response.status_code == 401
+
+
+def test_scan_start_requires_auth(client) -> None:
+    response = client.post("/api/scan/start")
+    assert response.status_code == 401
+
+
+def test_scan_state_isolated_per_user(client_scan, monkeypatch) -> None:
+    import app as dashboard_app
+    from auth import require_onboarding_complete_api
+
+    monkeypatch.setattr("asyncio.create_task", lambda coro: coro.close())
+
+    dashboard_app.app.dependency_overrides[require_onboarding_complete_api] = lambda: {
+        "sub": "user-a-route-test",
+        "email": "a@test.com",
+    }
+    r1 = client_scan.post("/api/scan/start")
+    assert r1.json()["status"] == "running"
+
+    dashboard_app.app.dependency_overrides[require_onboarding_complete_api] = lambda: {
+        "sub": "user-b-route-test",
+        "email": "b@test.com",
+    }
+    r2 = client_scan.get("/api/scan/status")
+    assert r2.json()["status"] == "idle"

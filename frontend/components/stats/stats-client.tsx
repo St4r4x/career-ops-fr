@@ -3,13 +3,11 @@
 import { useQuery } from "@tanstack/react-query";
 import type { StatsResponse } from "@/lib/types";
 import { statusColor } from "@/lib/status-colors";
+import { redirectOnUnauthenticated } from "@/lib/api-errors";
 
 async function fetchStats(): Promise<StatsResponse> {
   const res = await fetch("/api/stats");
-  if (res.status === 401) {
-    window.location.href = "/login";
-    throw new Error("session expired");
-  }
+  redirectOnUnauthenticated(res);
   if (res.status === 403) {
     const body = await res.json();
     window.location.href = body.detail?.redirect ?? "/profile";

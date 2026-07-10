@@ -64,6 +64,22 @@ FAKE_ONBOARDING = {
     "hf_token_complete": True,
 }
 
+FAKE_SETTINGS = {
+    "keywords": ["AI Engineer"],
+    "portal_queries": ["AI Engineer"],
+    "location": "Paris",
+    "contract": "CDI",
+    "experience_max_years": 3,
+    "salary_min": 40000,
+    "salary_max": 60000,
+    "target_companies": ["Mistral AI"],
+    "follow_up_days": 7,
+}
+
+FAKE_ATS_TARGETS = [
+    {"id": 1, "name": "Mistral AI", "careers_url": "https://jobs.lever.co/mistral"}
+]
+
 _CREATE_TEMP = """
 CREATE TEMP TABLE applications (
     id SERIAL PRIMARY KEY,
@@ -250,6 +266,50 @@ def client_with_profile_mutations(monkeypatch):
     monkeypatch.setattr(user_data, "save_skills", mocks["save_skills"])
     monkeypatch.setattr(user_data, "save_certifications", mocks["save_certifications"])
     monkeypatch.setattr(user_data, "save_education", mocks["save_education"])
+
+    mock_conn = MagicMock()
+    mock_db = MagicMock()
+    mock_db.conn = mock_conn
+    dashboard_app.app.state.db = mock_db
+    dashboard_app.app.dependency_overrides[get_current_user_api] = lambda: MOCK_USER
+
+    yield TestClient(dashboard_app.app), mocks
+
+    dashboard_app.app.dependency_overrides.pop(get_current_user_api, None)
+
+
+@pytest.fixture
+def client_with_settings(monkeypatch):
+    import app as dashboard_app
+    import llm
+    import user_data
+    from auth import get_current_user_api
+    from unittest.mock import MagicMock
+
+    mocks = {
+        "get_settings": MagicMock(return_value=dict(FAKE_SETTINGS)),
+        "save_settings": MagicMock(),
+        "get_ats_targets": MagicMock(return_value=list(FAKE_ATS_TARGETS)),
+        "add_ats_target": MagicMock(return_value=2),
+        "delete_ats_target": MagicMock(),
+        "get_hf_token": MagicMock(return_value=None),
+        "save_hf_token": MagicMock(),
+        "delete_hf_token": MagicMock(),
+        "get_onboarding_state": MagicMock(return_value=dict(FAKE_ONBOARDING)),
+        "validate_hf_token": MagicMock(return_value=None),
+    }
+    monkeypatch.setattr(user_data, "get_settings", mocks["get_settings"])
+    monkeypatch.setattr(user_data, "save_settings", mocks["save_settings"])
+    monkeypatch.setattr(user_data, "get_ats_targets", mocks["get_ats_targets"])
+    monkeypatch.setattr(user_data, "add_ats_target", mocks["add_ats_target"])
+    monkeypatch.setattr(user_data, "delete_ats_target", mocks["delete_ats_target"])
+    monkeypatch.setattr(user_data, "get_hf_token", mocks["get_hf_token"])
+    monkeypatch.setattr(user_data, "save_hf_token", mocks["save_hf_token"])
+    monkeypatch.setattr(user_data, "delete_hf_token", mocks["delete_hf_token"])
+    monkeypatch.setattr(
+        user_data, "get_onboarding_state", mocks["get_onboarding_state"]
+    )
+    monkeypatch.setattr(llm, "validate_hf_token", mocks["validate_hf_token"])
 
     mock_conn = MagicMock()
     mock_db = MagicMock()
@@ -956,4 +1016,135 @@ def test_put_profile_cv_education_saves_entries(client_with_profile_mutations) -
 
 def test_put_profile_cv_education_requires_auth(client) -> None:
     response = client.put("/api/profile/cv/education", json=[])
+    assert response.status_code == 401
+
+
+def test_get_settings_returns_200_with_data(client_with_settings) -> None:
+    client, mocks = client_with_settings
+    response = client.get("/api/settings")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["settings"] == FAKE_SETTINGS
+    assert body["ats_targets"] == FAKE_ATS_TARGETS
+    assert body["hf_token_set"] is False
+    assert body["onboarding"] == FAKE_ONBOARDING
+
+
+def test_get_settings_requires_auth(client) -> None:
+    response = client.get("/api/settings")
+    assert response.status_code == 401
+
+
+def test_put_settings_search_saves_data(client_with_settings) -> None:
+    client, mocks = client_with_settings
+    payload = {
+        "keywords": ["ML Engineer"],
+        "portal_queries": [],
+        "location": "Lyon",
+        "contract": "CDI",
+        "experience_max_years": 5,
+        "salary_min": 50000,
+        "salary_max": 70000,
+        "target_companies": [],
+        "follow_up_days": 10,
+    }
+    response = client.put("/api/settings/search", json=payload)
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+    call_args = mocks["save_settings"].call_args[0]
+    assert call_args[2] == payload
+
+
+def test_put_settings_search_requires_auth(client) -> None:
+    response = client.put("/api/settings/search", json={})
+    assert response.status_code == 401
+
+
+def test_post_settings_ats_adds_and_returns_refreshed_list(
+    client_with_settings,
+) -> None:
+    client, mocks = client_with_settings
+    response = client.post(
+        "/api/settings/ats",
+        json={"name": "Doctrine", "careers_url": "https://jobs.lever.co/doctrine"},
+    )
+    assert response.status_code == 200
+    assert response.json() == {"ats_targets": FAKE_ATS_TARGETS}
+    call_args = mocks["add_ats_target"].call_args[0]
+    assert call_args[2] == "Doctrine"
+    assert call_args[3] == "https://jobs.lever.co/doctrine"
+
+
+def test_post_settings_ats_requires_auth(client) -> None:
+    response = client.post("/api/settings/ats", json={"name": "x", "careers_url": "y"})
+    assert response.status_code == 401
+
+
+def test_delete_settings_ats_removes_and_returns_refreshed_list(
+    client_with_settings,
+) -> None:
+    client, mocks = client_with_settings
+    response = client.delete("/api/settings/ats/1")
+    assert response.status_code == 200
+    assert response.json() == {"ats_targets": FAKE_ATS_TARGETS}
+    call_args = mocks["delete_ats_target"].call_args[0]
+    assert call_args[1] == MOCK_USER["sub"]
+    assert call_args[2] == 1
+
+
+def test_delete_settings_ats_requires_auth(client) -> None:
+    response = client.delete("/api/settings/ats/1")
+    assert response.status_code == 401
+
+
+def test_post_settings_hf_token_saves_valid_token(client_with_settings) -> None:
+    client, mocks = client_with_settings
+    response = client.post(
+        "/api/settings/hf-token", json={"hf_token": "hf_valid_token_123"}
+    )
+    assert response.status_code == 200
+    assert response.json() == {"hf_token_set": True}
+    mocks["validate_hf_token"].assert_called_once_with("hf_valid_token_123")
+    call_args = mocks["save_hf_token"].call_args[0]
+    assert call_args[2] == "hf_valid_token_123"
+
+
+def test_post_settings_hf_token_rejects_invalid_token(client_with_settings) -> None:
+    import llm
+
+    client, mocks = client_with_settings
+    mocks["validate_hf_token"].side_effect = llm.LLMError(
+        "Token invalide — vérifie que le copier-coller est complet."
+    )
+    response = client.post("/api/settings/hf-token", json={"hf_token": "hf_bad_token"})
+    assert response.status_code == 422
+    assert response.json()["detail"]["error"] == "invalid_hf_token"
+    assert "Token invalide" in response.json()["detail"]["message"]
+    mocks["save_hf_token"].assert_not_called()
+
+
+def test_post_settings_hf_token_empty_clears_token(client_with_settings) -> None:
+    client, mocks = client_with_settings
+    response = client.post("/api/settings/hf-token", json={"hf_token": ""})
+    assert response.status_code == 200
+    assert response.json() == {"hf_token_set": False}
+    mocks["delete_hf_token"].assert_called_once()
+    mocks["validate_hf_token"].assert_not_called()
+
+
+def test_post_settings_hf_token_requires_auth(client) -> None:
+    response = client.post("/api/settings/hf-token", json={"hf_token": "x"})
+    assert response.status_code == 401
+
+
+def test_delete_settings_hf_token_clears(client_with_settings) -> None:
+    client, mocks = client_with_settings
+    response = client.delete("/api/settings/hf-token")
+    assert response.status_code == 200
+    assert response.json() == {"hf_token_set": False}
+    mocks["delete_hf_token"].assert_called_once()
+
+
+def test_delete_settings_hf_token_requires_auth(client) -> None:
+    response = client.delete("/api/settings/hf-token")
     assert response.status_code == 401

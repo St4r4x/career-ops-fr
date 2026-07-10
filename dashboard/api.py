@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 import mistune
 
+import llm
 import prepare_state
 import profile_parser
 import scan_state
@@ -423,3 +425,102 @@ async def update_profile_cv_education(
     user_data.save_education(conn, user_id, lang, entries)
     conn.commit()
     return {"ok": True}
+
+
+@router.get("/settings")
+async def get_settings_route(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user_api),
+) -> dict:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    settings = user_data.get_settings(conn, user_id)
+    ats_targets = user_data.get_ats_targets(conn, user_id)
+    hf_token_set = user_data.get_hf_token(conn, user_id) is not None
+    onboarding = user_data.get_onboarding_state(conn, user_id)
+    return {
+        "settings": settings,
+        "ats_targets": ats_targets,
+        "hf_token_set": hf_token_set,
+        "onboarding": onboarding,
+    }
+
+
+@router.put("/settings/search")
+async def update_settings_search(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user_api),
+    data: dict = Body(...),
+) -> dict:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    user_data.save_settings(conn, user_id, data)
+    conn.commit()
+    return {"ok": True}
+
+
+@router.post("/settings/ats")
+async def add_settings_ats(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user_api),
+    body: dict = Body(...),
+) -> dict:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    user_data.add_ats_target(
+        conn, user_id, body.get("name", ""), body.get("careers_url", "")
+    )
+    conn.commit()
+    ats_targets = user_data.get_ats_targets(conn, user_id)
+    return {"ats_targets": ats_targets}
+
+
+@router.delete("/settings/ats/{target_id}")
+async def delete_settings_ats(
+    request: Request,
+    target_id: int,
+    current_user: CurrentUser = Depends(get_current_user_api),
+) -> dict:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    user_data.delete_ats_target(conn, user_id, target_id)
+    conn.commit()
+    ats_targets = user_data.get_ats_targets(conn, user_id)
+    return {"ats_targets": ats_targets}
+
+
+@router.post("/settings/hf-token")
+async def save_settings_hf_token(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user_api),
+    body: dict = Body(...),
+) -> dict:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    token = body.get("hf_token", "").strip()
+    if not token:
+        user_data.delete_hf_token(conn, user_id)
+        conn.commit()
+        return {"hf_token_set": False}
+    try:
+        await asyncio.to_thread(llm.validate_hf_token, token)
+    except llm.LLMError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"error": "invalid_hf_token", "message": str(exc)},
+        )
+    user_data.save_hf_token(conn, user_id, token)
+    conn.commit()
+    return {"hf_token_set": True}
+
+
+@router.delete("/settings/hf-token")
+async def delete_settings_hf_token(
+    request: Request,
+    current_user: CurrentUser = Depends(get_current_user_api),
+) -> dict:
+    conn = request.app.state.db.conn
+    user_id = current_user["sub"]
+    user_data.delete_hf_token(conn, user_id)
+    conn.commit()
+    return {"hf_token_set": False}

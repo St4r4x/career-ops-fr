@@ -51,6 +51,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `frontend/components/profile/contact-section.tsx`, `summary-section.tsx`, `cv-meta-section.tsx`, `cv-skills-section.tsx`, `cv-certifications-section.tsx`, `cv-education-section.tsx` — self-contained edit UI for contact/résumé/CV summary/skills/certifications/education, each owning its own edit-toggle state and mutation, matching the established `ScanButton`/`PreparePanel` pattern
 - `frontend/components/profile/editable-list-form.tsx` — shared generic list editor, reused by the skills/certifications/education sections
 - `frontend/components/profile/cv-experience-section.tsx`, `experience-edit-form.tsx` — edit UI for CV experience entries (nested bullet-point CRUD, instant single-row delete via `DELETE /api/profile/cv/experience/{id}`), completing the Profile page's edit surface
+- `dashboard/api.py` — `GET /api/settings`, `PUT /api/settings/search`, `POST`/`DELETE /api/settings/ats`, `POST`/`DELETE /api/settings/hf-token` — the JSON API the migrated Settings page will consume, all gated by `get_current_user_api` only (no onboarding gate, since Settings is itself part of onboarding completeness)
 
 ### Changed
 - `docker-compose.yml` — split the single `dashboard` service into `api`, `web`, and `proxy` (nginx); `proxy` now owns the host's port 8000, forwarding `/api/*` and everything else to `api` unchanged
@@ -75,6 +76,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `frontend/components/candidatures/candidatures-client.tsx` — a 401 (expired session) on any `/api/offers*` call now redirects to `/login`, matching the existing 403 (onboarding-incomplete) handling; previously only the 403 case was handled and an expired session left the page silently stuck loading
 - `dashboard/user_data.py` — `get_hf_token()` now catches `cryptography.fernet.InvalidToken` and returns `None` instead of raising. A stored Hugging Face token encrypted under a `SECRET_KEY` that no longer matches the currently-configured one (e.g. after an env rotation) was crashing `/profile`, `/settings`, and every onboarding-gate check with a 500; an undecryptable token is treated the same as no token — the user re-saves it in Settings either way
 - `frontend/components/profile/profile-client.tsx` — FR/EN CV toggle buttons now have `aria-pressed`; LinkedIn/GitHub contact fields now render as real `<a href>` anchors instead of bare text — both deferred from sub-phase A's final review to whenever these sections next gained edit affordances
+- `dashboard/api.py` — `POST /api/settings/hf-token` now wraps the blocking `llm.validate_hf_token()` network call in `asyncio.to_thread(...)`, so validating a Hugging Face token no longer freezes the whole server's event loop for the duration of that HTTP round-trip — the same class of bug `prepare_state.py` fixed for the LLM/PDF pipeline during Candidatures sub-phase D
 
 ### Removed
 - `dashboard/app.py`, `dashboard/templates/auth/*.html` — deleted the Jinja2-rendered `/login`, `/signup`, `/auth/confirm`, `/auth/reset-password` pages now that nginx routes those paths to the Next.js frontend instead

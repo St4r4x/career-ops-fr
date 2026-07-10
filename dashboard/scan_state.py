@@ -42,8 +42,10 @@ async def _run_scan(user_id: str) -> None:
         _result[user_id]["found"] = len(offers)
         _result[user_id]["scored"] = len(offers)
 
-        inserted, skipped = import_offers(offers, user_id=user_id)
-        abandoned = expire_stale_offers(user_id=user_id)
+        inserted, skipped = await asyncio.to_thread(
+            import_offers, offers, user_id=user_id
+        )
+        abandoned = await asyncio.to_thread(expire_stale_offers, user_id=user_id)
 
         _result[user_id] = {
             "inserted": inserted,

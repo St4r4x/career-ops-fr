@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { CvEducation } from "@/lib/types";
 import { redirectOnUnauthenticated } from "@/lib/api-errors";
 import { EditableListForm } from "@/components/profile/editable-list-form";
+import { EditableSectionHeader } from "@/components/profile/editable-section-header";
 
 async function saveEducation(
   lang: "fr" | "en",
@@ -36,24 +37,15 @@ export function CvEducationSection({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-sm font-semibold">Formation</p>
-        <div className="flex items-center gap-2">
-          {mutation.isSuccess && !isEditing && (
-            <span className="text-xs text-primary">✓ Enregistré</span>
-          )}
-          <button
-            type="button"
-            onClick={() => {
-              mutation.reset();
-              setIsEditing((v) => !v);
-            }}
-            className="text-xs text-primary hover:underline"
-          >
-            {isEditing ? "Annuler" : "Modifier"}
-          </button>
-        </div>
-      </div>
+      <EditableSectionHeader
+        title="Formation"
+        isEditing={isEditing}
+        showSuccess={mutation.isSuccess && !isEditing}
+        onToggle={() => {
+          mutation.reset();
+          setIsEditing((v) => !v);
+        }}
+      />
       {isEditing ? (
         <EditableListForm
           entries={education.map((e) => ({

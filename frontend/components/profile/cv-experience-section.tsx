@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { CvExperience } from "@/lib/types";
 import { redirectOnUnauthenticated } from "@/lib/api-errors";
 import { ExperienceEditForm, type ExperienceRow } from "@/components/profile/experience-edit-form";
+import { EditableSectionHeader } from "@/components/profile/editable-section-header";
 
 async function saveExperience(lang: "fr" | "en", entries: ExperienceRow[]): Promise<void> {
   const res = await fetch(`/api/profile/cv/experience?lang=${lang}`, {
@@ -42,24 +43,15 @@ export function CvExperienceSection({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-sm font-semibold">Expériences</p>
-        <div className="flex items-center gap-2">
-          {saveMutation.isSuccess && !isEditing && (
-            <span className="text-xs text-primary">✓ Enregistré</span>
-          )}
-          <button
-            type="button"
-            onClick={() => {
-              saveMutation.reset();
-              setIsEditing((v) => !v);
-            }}
-            className="text-xs text-primary hover:underline"
-          >
-            {isEditing ? "Annuler" : "Modifier"}
-          </button>
-        </div>
-      </div>
+      <EditableSectionHeader
+        title="Expériences"
+        isEditing={isEditing}
+        showSuccess={saveMutation.isSuccess && !isEditing}
+        onToggle={() => {
+          saveMutation.reset();
+          setIsEditing((v) => !v);
+        }}
+      />
       {isEditing ? (
         <ExperienceEditForm
           experience={experience}

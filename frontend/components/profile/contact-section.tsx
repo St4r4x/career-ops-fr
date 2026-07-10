@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ProfileContact } from "@/lib/types";
 import { redirectOnUnauthenticated } from "@/lib/api-errors";
 import { ContactEditForm } from "@/components/profile/contact-edit-form";
+import { EditableSectionHeader } from "@/components/profile/editable-section-header";
 
 async function saveContact(contact: ProfileContact): Promise<void> {
   const res = await fetch("/api/profile/contact", {
@@ -30,24 +31,16 @@ export function ContactSection({ contact }: { contact: ProfileContact }) {
 
   return (
     <div className="rounded-xl p-5 mb-4 bg-card border border-border">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-semibold">Coordonnées</p>
-        <div className="flex items-center gap-2">
-          {mutation.isSuccess && !isEditing && (
-            <span className="text-xs text-primary">✓ Enregistré</span>
-          )}
-          <button
-            type="button"
-            onClick={() => {
-              mutation.reset();
-              setIsEditing((v) => !v);
-            }}
-            className="text-xs text-primary hover:underline"
-          >
-            {isEditing ? "Annuler" : "Modifier"}
-          </button>
-        </div>
-      </div>
+      <EditableSectionHeader
+        title="Coordonnées"
+        isEditing={isEditing}
+        showSuccess={mutation.isSuccess && !isEditing}
+        onToggle={() => {
+          mutation.reset();
+          setIsEditing((v) => !v);
+        }}
+        className="mb-3"
+      />
       {isEditing ? (
         <ContactEditForm
           contact={contact}

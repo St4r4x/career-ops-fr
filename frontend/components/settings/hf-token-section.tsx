@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { SettingsResponse } from "@/lib/types";
 import { redirectOnUnauthenticated } from "@/lib/api-errors";
 
 async function saveHfToken(token: string): Promise<{ hf_token_set: boolean }> {
@@ -32,14 +33,20 @@ export function HfTokenSection({ hfTokenSet }: { hfTokenSet: boolean }) {
 
   const saveMutation = useMutation({
     mutationFn: saveHfToken,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["settings"] });
+    onSuccess: (data) => {
+      queryClient.setQueryData<SettingsResponse>(["settings"], (old) =>
+        old ? { ...old, hf_token_set: data.hf_token_set } : old,
+      );
       setToken("");
     },
   });
   const deleteMutation = useMutation({
     mutationFn: deleteHfToken,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["settings"] }),
+    onSuccess: (data) => {
+      queryClient.setQueryData<SettingsResponse>(["settings"], (old) =>
+        old ? { ...old, hf_token_set: data.hf_token_set } : old,
+      );
+    },
   });
 
   return (

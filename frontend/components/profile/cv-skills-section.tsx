@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { CvSkill } from "@/lib/types";
 import { redirectOnUnauthenticated } from "@/lib/api-errors";
 import { EditableListForm } from "@/components/profile/editable-list-form";
+import { EditableSectionHeader } from "@/components/profile/editable-section-header";
 
 async function saveSkills(
   lang: "fr" | "en",
@@ -41,24 +42,15 @@ export function CvSkillsSection({ skills, lang }: { skills: CvSkill[]; lang: "fr
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-sm font-semibold">Compétences</p>
-        <div className="flex items-center gap-2">
-          {mutation.isSuccess && !isEditing && (
-            <span className="text-xs text-primary">✓ Enregistré</span>
-          )}
-          <button
-            type="button"
-            onClick={() => {
-              mutation.reset();
-              setIsEditing((v) => !v);
-            }}
-            className="text-xs text-primary hover:underline"
-          >
-            {isEditing ? "Annuler" : "Modifier"}
-          </button>
-        </div>
-      </div>
+      <EditableSectionHeader
+        title="Compétences"
+        isEditing={isEditing}
+        showSuccess={mutation.isSuccess && !isEditing}
+        onToggle={() => {
+          mutation.reset();
+          setIsEditing((v) => !v);
+        }}
+      />
       {isEditing ? (
         <EditableListForm
           entries={skills.map((s) => ({ category: s.category, skill: s.skill }))}

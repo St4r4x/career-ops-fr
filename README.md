@@ -78,7 +78,7 @@ Key variables:
 | `SUPABASE_ANON_KEY` | Anon key from `supabase status` |
 | `SUPABASE_JWT_SECRET` | JWT secret from `supabase status` |
 | `ALLOWED_ORIGINS` | CORS-allowed origins — `http://localhost:8000` for local dev |
-| `SECRET_KEY` | Encrypts per-user Hugging Face tokens at rest — generate with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
+| `SECRET_KEY` | Encrypts per-user LLM provider API keys at rest — generate with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
 | `COOKIE_SECURE` | Set to `true` in production (HTTPS only); `false` for local dev |
 | `DEV_AUTO_LOGIN` | Set to `true` to bypass auth in local dev (hardcoded dev user) |
 
@@ -135,7 +135,7 @@ To bypass auth entirely during development, set `DEV_AUTO_LOGIN=true` in `.env`.
 | `/candidatures` | Offer list with filters and a detail panel — status quick-change, notes autosave, edit form, delete, scan trigger, and "Préparer candidature"/"Préparer entretien" actions; shared nav (logo, Candidatures/Stats/Profil/Paramètres links, user email, logout) |
 | `/stats` | Pipeline statistics — response rate, interview count, funnel with conversion rates, daily report widget |
 | `/profile` | Profile editor — contact info, résumé, and CV editor (FR/EN tabs, editable) |
-| `/settings` | Preferences — search keywords, active portals picker (flags portals that require registration), salary range, target companies, ATS targets CRUD, Hugging Face API token |
+| `/settings` | Preferences — search keywords, active portals picker (flags portals that require registration), salary range, target companies, ATS targets CRUD, reorderable LLM providers list (Hugging Face, Ollama Cloud, OpenAI, Anthropic, Groq) with automatic fallback |
 
 Every page above is served by the Next.js frontend (`web`), backed by the FastAPI JSON API under `/api/*` (`dashboard/api.py`). `POST /api/offers/{offer_id}/prepare` runs the LLM pipeline: analyzes the offer, rewrites the CV summary, writes the cover letter, generates the interview prep sheet, and renders all three as PDFs.
 

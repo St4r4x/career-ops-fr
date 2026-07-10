@@ -16,11 +16,11 @@ export function OnboardingBanner({ onboarding }: { onboarding: OnboardingState }
         </a>
       )}
       <span>·</span>
-      {onboarding.hf_token_complete ? (
-        <span>✓ Token Hugging Face</span>
+      {onboarding.llm_provider_complete ? (
+        <span>✓ Fournisseur LLM</span>
       ) : (
-        <a href="/settings#hf-token" className="text-primary hover:underline">
-          ✗ Token Hugging Face
+        <a href="/settings#llm-providers" className="text-primary hover:underline">
+          ✗ Fournisseur LLM
         </a>
       )}
     </div>

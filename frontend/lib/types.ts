@@ -167,7 +167,7 @@ export type OnboardingState = {
   is_complete: boolean;
   profile_complete: boolean;
   search_complete: boolean;
-  hf_token_complete: boolean;
+  llm_provider_complete: boolean;
 };
 
 export type ProfileResponse = {
@@ -201,10 +201,22 @@ export type Portal = {
   status: string;
 };
 
+export type LlmProviderName =
+  | "huggingface"
+  | "ollama_cloud"
+  | "openai"
+  | "anthropic"
+  | "groq";
+
+export type LlmProvider = {
+  provider: LlmProviderName;
+  sort_order: number;
+};
+
 export type SettingsResponse = {
   settings: Settings;
   ats_targets: AtsTarget[];
-  hf_token_set: boolean;
+  llm_providers: LlmProvider[];
   onboarding: OnboardingState;
   available_portals: Portal[];
 };
